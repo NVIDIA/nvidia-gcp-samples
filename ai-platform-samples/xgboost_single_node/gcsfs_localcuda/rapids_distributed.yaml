@@ -1,0 +1,30 @@
+# Copyright 2020 NVIDIA Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# We modify the original Higgs data into 1GB chnuks and append to different size for benchmarking. We also generated parquet versions for our tests
+trainingInput:
+  args:
+  - --gcp-project=<your_project>
+  - --train-files=gs://<your_project>/<data_folder>/higgs_csv/*.csv
+  - --model-file=gs://<your_project>/<data_folder>/models/1t.model
+  - --num-worker=4
+  - --threads-per-worker=8
+  - --do-wait
+  masterConfig:
+    acceleratorConfig:
+      count: '4'
+      type: NVIDIA_TESLA_T4
+    imageUri: gcr.io/<your_project>/<your_image>:latest
+  masterType: n1-highmem-32
+  scaleTier: CUSTOM

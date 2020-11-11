@@ -1,0 +1,27 @@
+name: "ResNet50-INT8"
+platform: "tensorrt_plan"
+max_batch_size: 32
+dynamic_batching {
+  preferred_batch_size: [ 32 ]
+  max_queue_delay_microseconds: 1000000
+  default_queue_policy {
+     timeout_action: DELAY
+     default_timeout_microseconds: 1000000000
+  }
+}
+output {
+  name: "resnet50_v1.5/output/softmax:0"
+  label_filename: "imagenet1k_labels.txt"
+}
+output {
+  name: "ArgMax:0"
+}
+instance_group [
+  {
+    count: 1
+    kind: KIND_GPU
+    gpus: [ 0 ]
+    profile: "2"
+  }
+]
+

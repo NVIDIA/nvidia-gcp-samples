@@ -1,0 +1,16 @@
+[Unit]
+Description=Jupyter Lab
+
+[Service]
+Type=simple
+PIDFile=/run/jupyterlab.pid
+ExecStart=/usr/local/bin/jupyter-lab --notebook-dir=/workspace/notebooks --allow-root --ip=0.0.0.0 --no-browser --NotebookApp.token=\'\'
+
+User=root
+Group=root
+WorkingDirectory=/workspace/notebooks
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

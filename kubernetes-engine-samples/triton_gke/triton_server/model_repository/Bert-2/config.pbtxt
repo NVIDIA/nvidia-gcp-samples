@@ -1,0 +1,23 @@
+platform: "tensorrt_plan"
+max_batch_size: 16
+dynamic_batching {
+  preferred_batch_size: [ 16 ]
+  max_queue_delay_microseconds: 1000000
+  default_queue_policy {
+     timeout_action: DELAY
+     default_timeout_microseconds: 1000000000
+  }
+}
+optimization {
+  cuda {
+    graphs: true
+    allow_inexact_match: false
+  }
+}
+instance_group [
+  {
+    count: 2
+    kind: KIND_GPU
+    gpus: [ 0 ]
+  }
+]
