@@ -19,7 +19,7 @@ This repository contains sample applications
 
 ## Samples
 
- - [Triton Autoscaling Example with Triton in Google Kubernetes Engine](kubernetes-engine-samples/triton_gke)
+ - [Triton Autoscaling Example with TensorRT Optimization in Google Kubernetes Engine](kubernetes-engine-samples/triton_gke)
  - [BERT fine tuning, TensorRT optimization, Serve TensorRT Engine through Triton in AI Platform Prediction ](ai-platform-samples/bert_on_caip)
  - [XGBoost with LocalCUDACluster Dask Single Node Sample](ai-platform-samples/xgboost_single_node/gcsfs_localcuda)
 
