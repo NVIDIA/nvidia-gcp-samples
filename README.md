@@ -10,7 +10,9 @@
 
 ## Description
 
-This repository contains sample applications
+This repository contains sample applications for NVIDIA software tool demos working with GCP platforms (ai platform, Dataproc, GKE, etc).
+For some demos the sample code will be part of this repo, and for some demos we would link to some great demos outside of this repo.
+
 
 ## Prerequisites
 
@@ -22,6 +24,8 @@ This repository contains sample applications
  - [Triton Autoscaling Example with TensorRT Optimization in Google Kubernetes Engine](kubernetes-engine-samples/triton_gke)
  - [BERT fine tuning, TensorRT optimization, Serve TensorRT Engine through Triton in AI Platform Prediction ](ai-platform-samples/bert_on_caip)
  - [XGBoost with LocalCUDACluster Dask Single Node Sample](ai-platform-samples/xgboost_single_node/gcsfs_localcuda)
+ - [RAPIDS XGBoost hyperparameter optimization example](https://github.com/rapidsai/cloud-ml-examples/tree/main/gcp)
+ - [RAPIDS/Spark on GCP Dataproc](https://nvidia.github.io/spark-rapids/docs/get-started/getting-started-gcp.html)
 
 ## Additional Resources
 
