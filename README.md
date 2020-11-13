@@ -11,13 +11,13 @@
 
 ## Description
 
-This repository contains sample applications for NVIDIA software tool demos working with GCP platforms (ai platform, Dataproc, GKE, etc).
+This repository contains sample applications for NVIDIA software tool working with GCP platforms (ai platform, Dataproc, GKE, etc).
 For some demos the sample code will be part of this repo, and for some demos we would link to some great demos outside of this repo.
 
 
 ## Prerequisites
 
- - [Install Google Cloud SDK on your laptop/client workstation](https://cloud.google.com/sdk/docs/install), so that `gcloud` SDK cli interface could be ran on the client
+ - [Install Google Cloud SDK on your laptop/client workstation](https://cloud.google.com/sdk/docs/install), so that `gcloud` SDK cli interface could be run on the client
  - In addition, user could leverage [Google Cloud shell](https://cloud.google.com/shell/docs/launching-cloud-shell) and further improve the user experience with [Boost Mode](https://cloud.google.com/shell/docs/how-cloud-shell-works#boost_mode)
 
 ## Samples
