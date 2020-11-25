@@ -1,0 +1,39 @@
+# Copyright 2020 NVIDIA Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+# We modify the original Higgs data into 1GB chunks and append to different size for benchmarking. We also generate parquet files for our testing.
+
+trainingInput:
+  args:
+  - --scheduler-ip-file=gs://<gcs_bucket>/<gs_folder>/scheduler.txt
+  - --train-files=gs://<gcs_bucket>/<gs_folder>/*.parquet
+  - --rmm-pool-size=16G
+  - --num-workers=4
+  - --nthreads=4
+  - --parquet
+  masterConfig:
+    acceleratorConfig:
+      count: '1'
+      type: NVIDIA_TESLA_T4
+    imageUri: gcr.io/<account_name>/gcp_rapids_dask:latest>
+  masterType: n1-highmem-4
+  scaleTier: CUSTOM
+  workerConfig:
+    acceleratorConfig:
+      count: '2'
+      type: NVIDIA_TESLA_T4
+    imageUri: gcr.io/<account_name>/gcp_rapids_dask:latest
+  workerCount: '4'
+  workerType: n1-highmem-4
