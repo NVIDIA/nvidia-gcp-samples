@@ -11,6 +11,8 @@ This a sample to optimize, serve and analyze Deep Learning models running on NVI
 * AutoScale TRITON Services with required SLAs or GPU metrics
 * Detailed performance stats: Resnet50 ~4kqps at ~100ms latency, Bert Large Seq384 ~170qps at 125ms latency  
 
+![Cloud architecture](img/triton_gke.png)
+
 **Resources:** 
 * TRITON Documentation: [TRITON docs](https://docs.nvidia.com/deeplearning/sdk/tensorrt-inference-server-guide/docs/)
 * Generate TensorRT BERT model: [TensorRT BERT Demo](https://github.com/NVIDIA/TensorRT/tree/master/demo/BERT)
@@ -22,7 +24,6 @@ This a sample to optimize, serve and analyze Deep Learning models running on NVI
 Replace GCP project and cluster name to your own choice
 ``` bash
 export PROJECT_ID=[YOU GCP Project]
-export PROJECT_ID=k80-exploration
 export ZONE='us-central1-a'
 export DEPLOYMENT_NAME='nvidia-gcp-gke'
 export NODE_LOCATION='us-central1-a'
