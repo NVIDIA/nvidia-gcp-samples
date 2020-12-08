@@ -25,17 +25,17 @@ Cutomize the rapids_distributed.yaml to the account needs and then createa AI pl
 
 Dataset :  gs://<gcs_bucket>/rapids-higgs-parquet/*.parquet (10 GiB)
 
-|  Experiment | No of GPUs/ Master  | No of GPUs/ Worker  |  num-workers  | Total No of GPU used | nthreads  | Xgb.dask.train time (sec) |
+|  Experiment | No of GPUs/ Master | No of GPUs/ Worker  |  num-workers  | Total No of GPU used (Master + Worker) | nthreads  | Xgb.dask.train time (sec) |
 |---|---|---|---|---|---|---|
-|  1 | 1 | 1 | 2 | 3 | 4 | Out of memory  |
-|  2 | 1 | 2 | 4 | 5 | 4 |  138.06 |
+|  1 | 1 | 1 | 2 | 3 | 4 | Out of Memory |
+|  2 | 1 | 2 | 2 | 5 | 4 |  138.06 |
 |  3 | 1 | 2 | 4 | 9 | 4 |  99.37 |
 
 
-|  Experiment | No of GPUs/ Master | No of GPUs/ Worker  |  num-workers  | Total No of GPU used | nthreads  | Xgb.dask.train time (sec) |
+|  Experiment | No of GPUs/ Master | No of GPUs/ Worker  |  num-workers  | Total No of GPU used (Master + Worker) | nthreads  | Xgb.dask.train time (sec) |
 |---|---|---|---|---|---|---|
-|  1 | 1 | 1 | 2 | 3 | 8 | Out of memory  |
-|  2 | 1 | 2 | 4 | 5 | 8 |  141.29 |
+|  1 | 1 | 1 | 2 | 3 | 8 | Out of Memory |
+|  2 | 1 | 2 | 2 | 5 | 8 |  141.29 |
 |  3 | 1 | 2 | 4 | 9 | 8 |  120.49 |
 
 ### CSV
@@ -43,15 +43,15 @@ Dataset :  gs://<gcs_bucket>/rapids-higgs-parquet/*.parquet (10 GiB)
 Dataset : gs://<gcs_bucket>/rapids-higgs/*.csv  (24.88 GB)
 
 
-|  Experiment | No of GPUs/ Master | No of GPUs/ Worker  |  num-workers  | Total No of GPU used | nthreads  | Xgb.dask.train time (sec) |
+|  Experiment | No of GPUs/ Master | No of GPUs/ Worker  |  num-workers  | Total No of GPU used (Master + Worker) | nthreads  | Xgb.dask.train time (sec) |
 |---|---|---|---|---|---|---|
-|  1 | 1 | 1 | 2 | 3 | 4 | 228.21  |
-|  2 | 1 | 2 | 4 | 5 | 4 |  177.80 |
-|  3 | 1 | 2 | 4 | 9 | 4 |  155.40 |
+|  1 | 1 | 1 | 2 | 3 | 4 | 228.21 |
+|  2 | 1 | 2 | 2 | 5 | 4 | 177.80 |
+|  3 | 1 | 2 | 4 | 9 | 4 | 155.40 |
 
 
-|  Experiment | No of GPUs/ Master | No of GPUs/ Worker |  num-workers  | Total No of GPU used | nthreads  | Xgb.dask.train time (sec) |
+|  Experiment | No of GPUs/ Master | No of GPUs/ Worker  |  num-workers  | Total No of GPU used (Master + Worker) | nthreads  | Xgb.dask.train time (sec) |
 |---|---|---|---|---|---|---|
-|  1 | 1 | 1 | 2 | 3 | 8 |  268.25 |
+|  1 | 1 | 1 | 2 | 3 | 8 | 268.25  |
 |  2 | 1 | 2 | 4 | 5 | 8 |  153.21 |
 |  3 | 1 | 2 | 4 | 9 | 8 |  129.53 |
