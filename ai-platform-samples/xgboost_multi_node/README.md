@@ -53,5 +53,5 @@ Dataset : gs://<gcs_bucket>/rapids-higgs/*.csv  (24.88 GB)
 |  Experiment | No of GPUs/ Master | No of GPUs/ Worker  |  num-workers  | Total No of GPU used (Master + Worker) | nthreads  | Xgb.dask.train time (sec) |
 |---|---|---|---|---|---|---|
 |  1 | 1 | 1 | 2 | 3 | 8 | 268.25  |
-|  2 | 1 | 2 | 4 | 5 | 8 |  153.21 |
+|  2 | 1 | 2 | 2 | 5 | 8 |  153.21 |
 |  3 | 1 | 2 | 4 | 9 | 8 |  129.53 |
