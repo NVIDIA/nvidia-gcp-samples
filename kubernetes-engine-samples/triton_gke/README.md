@@ -21,7 +21,7 @@ This a sample to optimize, serve and analyze Deep Learning models running on NVI
 
 #### Deploy GKE cluster with T4 node pools
 
-Replace GCP project and cluster name to your own choice
+Replace GCP project and cluster name to your own choice, please deploy GKE cluster with a version later than 1.18.
 ``` bash
 export PROJECT_ID=[YOU GCP Project]
 export ZONE='us-central1-a'
