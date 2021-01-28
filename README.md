@@ -27,6 +27,7 @@ For some demos the sample code will be part of this repo, and for some demos we 
  - [XGBoost with LocalCUDACluster Dask Single Node Sample](ai-platform-samples/xgboost_single_node/gcsfs_localcuda)
  - [RAPIDS XGBoost hyperparameter optimization example](https://github.com/rapidsai/cloud-ml-examples/tree/main/gcp)
  - [RAPIDS/Spark on GCP Dataproc](https://nvidia.github.io/spark-rapids/docs/get-started/getting-started-gcp.html)
+ - [TensorRT Bert Q&A Inference in GCP Dataflow](dataflow-samples/bert-qa-trt-dataflow)
 
 ## Additional Resources
 
