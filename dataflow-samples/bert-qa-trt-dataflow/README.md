@@ -29,7 +29,7 @@ python3 bert_squad2_qa_trt.py             \
   --number_of_worker_harness_threads=4  
 ```
 
-We expect ~100 GPS(Query per second) on a T4 n1-standard-4 instance. Which calculates to 650k inference per dollar on a 345 million parameters model. This could be further optimized with analysis of beam performance and TensorRT API usage. To understand the sample, we recommend go through following materials:
+We expect ~100 QPS(Query per second) on a T4 n1-standard-4 instance. Which calculates to 650k inference per dollar on a 345 million parameters model. This could be further optimized with analysis of beam performance and TensorRT API usage. To understand the sample, we recommend go through following materials:
 
 **Documentation**
 - [Machine learning patterns with Apache Beam and the Dataflow Runner](https://cloud.google.com/blog/products/data-analytics/ml-inference-in-dataflow-pipelines)
