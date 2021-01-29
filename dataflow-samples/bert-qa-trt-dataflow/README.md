@@ -6,7 +6,7 @@ This is sample that deployed a optimized BERT large model with sequence-length 3
 
 Before running the sample, make sure GCP application crediential has been enabled with: `gcloud auth application-default login`. Make sure GPU is enabled in GCP dataflow, also try [getting started guide](https://cloud.google.com/dataflow/docs/quickstarts/quickstart-python) if you never run dataflow before.
 
-Once image is pushed successfully, make sure your local python environment has version 3.6 and properly installed with dataflow prerequsite, then dataflow job could be launch with:
+Once image is pushed successfully, make sure your local python environment has version 3.6 and properly installed with dataflow prerequsite, then dataflow job could be launch with (you can GPU and region availability here [GPUs by region](https://cloud.google.com/compute/docs/gpus/gpu-regions-zones)):
 ```
 export PROJECT_ID=[your gcp project ID]
 export GCS_BUCKET=[your gcs bucket for temp location]
