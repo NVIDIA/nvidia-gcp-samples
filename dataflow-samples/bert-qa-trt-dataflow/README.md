@@ -2,7 +2,7 @@
 
 ## Sample Overview
 
-This is sample that deployed a optimized BERT large model with sequence-length 384, fine-tuned with squad Q&A task, then run inference with GCP dataflow. To run the sample, please first create a docker image and push to GCR registry with [build_and_push.sh](build_and_push.sh). Please make sure your git lfs is enabled so that you can download the engine file. In the sample code, we generate replicated documentation and questions to send, each request has a default batch size of 16 which match the optimial batch size of the TensorRT Engine profile. 
+This is sample that deployed a optimized BERT large model with sequence-length 384, fine-tuned with squad Q&A task, then run inference with GCP dataflow. To run the sample, please first create a docker image and push to GCR registry with [bash build_and_push.sh my-project-id](build_and_push.sh). Please make sure your git lfs is enabled so that you can download the engine file. In the sample code, we generate replicated documentation and questions to send, each request has a default batch size of 16 which match the optimial batch size of the TensorRT Engine profile. 
 
 Before running the sample, make sure GCP application crediential has been enabled with: `gcloud auth application-default login`. Make sure GPU is enabled in GCP dataflow, also try [getting started guide](https://cloud.google.com/dataflow/docs/quickstarts/quickstart-python) if you never run dataflow before.
 
