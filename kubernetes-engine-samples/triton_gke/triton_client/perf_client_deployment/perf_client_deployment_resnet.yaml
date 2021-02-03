@@ -34,7 +34,7 @@ spec:
         imagePullPolicy: IfNotPresent
         resources:
           requests:
-            cpu: "4"
+            cpu: "2"
         command: [ "/bin/bash", "-c", "--" ]
         args: [ "/workspace/install/bin/perf_client --async -m ResNet50-INT8 -x -1 -p 1000 -t 32 -s 0.001 -r 100000 -v -i HTTP -u 34.91.91.18:8000 -b 32 -l 500 -z --max-threads=4 --percentile=50" ]
 
