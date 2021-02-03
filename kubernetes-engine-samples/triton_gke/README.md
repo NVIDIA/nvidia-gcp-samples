@@ -30,8 +30,8 @@ export NODE_LOCATION='us-central1-a'
 
 gcloud beta container clusters create ${DEPLOYMENT_NAME} \
 --addons=HorizontalPodAutoscaling,HttpLoadBalancing,Istio,ApplicationManager,GcePersistentDiskCsiDriver \
---machine-type=n1-standard-4 \
---cluster-version=1.18.10-gke.601 --zone=${ZONE} \
+--machine-type=n1-standard-8 \
+--cluster-version=1.18.12-gke.1205 --zone=${ZONE} \
 --release-channel rapid \
 --node-locations=${ZONE} --num-nodes=1 \
 --subnetwork=default \
