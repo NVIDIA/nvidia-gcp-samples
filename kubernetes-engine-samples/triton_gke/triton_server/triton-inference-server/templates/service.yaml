@@ -16,6 +16,8 @@ kind: Service
 metadata:
   name: {{ template "triton-inference-server.fullname" . }}
   namespace: {{ .Release.Namespace }}
+  annotations:
+    networking.gke.io/load-balancer-type: "Internal"
   labels:
     app: {{ template "triton-inference-server.name" . }}
     chart: {{ template "triton-inference-server.chart" . }}
