@@ -30,4 +30,4 @@ spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: triton-inference-server
+    name: triton-triton-inference-server
