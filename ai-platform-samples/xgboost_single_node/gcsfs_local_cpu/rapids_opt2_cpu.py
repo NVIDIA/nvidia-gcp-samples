@@ -104,7 +104,7 @@ if __name__ == '__main__':
     fs = gcsfs.GCSFileSystem(project=args.gcp_project, token='cloud')
     print("[INFO]: ------ gcsfs object is created")
 
-    print("[INFO]: ------ LocalCUDACluster is being formed")
+    print("[INFO]: ------ LocalCluster is being formed")
 	# or use other clusters for scaling
     with LocalCluster(n_workers=args.num_worker, threads_per_worker=args.threads_per_worker) as cluster:
     	with Client(cluster) as client:
