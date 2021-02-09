@@ -132,7 +132,7 @@ if __name__ == "__main__":
                                 learning community can customize and extend these components to
                                 take advantage of powerful TensorRT optimizations for your apps.""",
                       ["What is TensorRT?", "Is TensorRT open sourced?", "Who is open sourcing TensorRT?",
-                       "What does TensorRT deliver?"] * 4)] * 40000
+                       "What does TensorRT deliver?"] * 4)] * 4000
     engine_path = "/workspace/trt_beam/bert_large_seq384_bs16_trt2011.engine"
 
     start_time = time.time()
