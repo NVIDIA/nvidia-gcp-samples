@@ -28,6 +28,8 @@ For some demos the sample code will be part of this repo, and for some demos we 
  - [RAPIDS XGBoost hyperparameter optimization example](https://github.com/rapidsai/cloud-ml-examples/tree/main/gcp)
  - [RAPIDS/Spark on GCP Dataproc](https://nvidia.github.io/spark-rapids/docs/get-started/getting-started-gcp.html)
  - [TensorRT Bert Q&A Inference in GCP Dataflow](dataflow-samples/bert-qa-trt-dataflow)
+ - [Triton Inference Server Application in Google Kubernetes Engine](https://cloud.google.com/blog/products/compute/triton-inference-server-in-gke-nvidia-google-kubernetes)
+ - [Building a Computer Vision Service Using NVIDIA NGC and Triton in Google Cloud](https://info.nvidia.com/ngc-google-cloud-computer-vision-webinar.html)
 
 ## Additional Resources
 
