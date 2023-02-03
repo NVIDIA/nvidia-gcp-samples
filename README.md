@@ -23,24 +23,24 @@ For some demos the sample code will be part of this repo, and for some demos we 
 ## Samples
 
 ### Deep Learning Inference:
- - [Triton Autoscaling Example with TensorRT Optimization in Google Kubernetes Engine](kubernetes-engine-samples/triton_gke)
- - [BERT fine tuning, TensorRT optimization, Serve TensorRT Engine through Triton in AI Platform Prediction ](ai-platform-samples/bert_on_caip)
- - [Triton Inference Server Application in Google Kubernetes Engine](https://cloud.google.com/blog/products/compute/triton-inference-server-in-gke-nvidia-google-kubernetes)
- - [Triton GKE Marketplace Application](https://console.cloud.google.com/marketplace/product/nvidia-ngc-public/triton-inference-server), [Blog](https://cloud.google.com/blog/products/compute/triton-inference-server-in-gke-nvidia-google-kubernetes)
+ - [Triton autoscaling example with TensorRT optimization in Google Kubernetes Engine](kubernetes-engine-samples/triton_gke)
+ - [BERT fine tuning, TensorRT optimization, Serve TensorRT engine through Triton in AI Platform Prediction ](ai-platform-samples/bert_on_caip)
+ - [Triton Inference Server application in Google Kubernetes Engine](https://cloud.google.com/blog/products/compute/triton-inference-server-in-gke-nvidia-google-kubernetes)
+ - [Triton GKE Marketplace application](https://console.cloud.google.com/marketplace/product/nvidia-ngc-public/triton-inference-server), [Blog](https://cloud.google.com/blog/products/compute/triton-inference-server-in-gke-nvidia-google-kubernetes)
  - [AlphaFold batch inference with Vertex AI Pipelines](https://github.com/GoogleCloudPlatform/vertex-ai-alphafold-inference-pipeline)
  - [Triton in Vertex AI Prediction](https://github.com/NVIDIA/nvidia-gcp-samples/blob/master/vertex-ai-samples/prediction/triton_inference.ipynb)
 
 ### Machine Learning and Data Science:
- - [XGBoost with LocalCUDACluster Dask Single Node Sample](ai-platform-samples/xgboost_single_node/gcsfs_localcuda)
+ - [XGBoost with LocalCUDACluster Dask single node sample](ai-platform-samples/xgboost_single_node/gcsfs_localcuda)
  - [RAPIDS XGBoost hyperparameter optimization example](https://github.com/rapidsai/cloud-ml-examples/tree/main/gcp)
  - [XGBoost ensemble inference with Triton](https://github.com/NVIDIA/nvidia-gcp-samples/blob/master/vertex-ai-samples/prediction/xgboost_ensemble/simple_xgboost_example.ipynb)
 
 ### Big Data Analytics:
  - [RAPIDS/Spark on GCP Dataproc](https://nvidia.github.io/spark-rapids/docs/get-started/getting-started-gcp.html)
- - [Churn Example with Spark RAPIDS on GCP Dataproc](https://github.com/GoogleCloudPlatform/datalake-modernization-workshops/tree/main/spark-rapids-churn)
+ - [Churn example with Spark RAPIDS on GCP Dataproc](https://github.com/GoogleCloudPlatform/datalake-modernization-workshops/tree/main/spark-rapids-churn)
  - [TensorRT intergration with Dataflow](https://github.com/apache/beam/blob/master/sdks/python/apache_beam/ml/inference/tensorrt_inference.py)
- - [TensorRT Bert Q&A Inference in GCP Dataflow](dataflow-samples/bert-qa-trt-dataflow)
- - [BigQuery analysis with Dask on GPU](https://github.com/NVIDIA/nvidia-gcp-samples/blob/master/bigquery-samples/dask-bigquery-connector/bigquery_dataproc_dask_xgboost.ipynb)
+ - [TensorRT Bert Q&A inference in GCP Dataflow](dataflow-samples/bert-qa-trt-dataflow)
+ - [BigQuery analytics with Dask on GPU](https://github.com/NVIDIA/nvidia-gcp-samples/blob/master/bigquery-samples/dask-bigquery-connector/bigquery_dataproc_dask_xgboost.ipynb)
 
 ### End to End Deep Learning:
  - [Building a Computer Vision Service Using NVIDIA NGC and Triton in Google Cloud](https://info.nvidia.com/ngc-google-cloud-computer-vision-webinar.html)
