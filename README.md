@@ -69,6 +69,7 @@ See [LICENSE](LICENSE).
 
 ## Maintainers
 
+- Fortuna Zhang (github: [FortunaZhang](https://github.com/FortunaZhang))
 - Dong Meng (github: [mengdong](https://github.com/mengdong))
 - Rajan Arora (github: [roarjn](https://github.com/roarjn))
 - Ethem Can (github: [ethem-kinginthenorth](https://github.com/ethem-kinginthenorth))
