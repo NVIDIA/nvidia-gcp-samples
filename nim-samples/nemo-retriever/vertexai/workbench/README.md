@@ -1,8 +1,8 @@
-# NVIDIA Nemo Retriever NIM on GCP Vertex AI
+# NVIDIA NeMo Retriever NIM on GCP Vertex AI
 
-**NVIDIA Nemo Retriever NIM** provides easy access to state-of-the-art models that are foundational building blocks for enterprise semantic search applications, delivering accurate answers quickly at scale. Developers can use these APIs to create robust copilots, chatbots, and AI assistants from start to finish. Text Retriever NIM models are built on the NVIDIA software platform, incorporating CUDA, TensorRT, and Triton to offer out-of-the-box GPU acceleration. 
+**NVIDIA NeMo Retriever NIM** provides easy access to state-of-the-art models that are foundational building blocks for enterprise semantic search applications, delivering accurate answers quickly at scale. Developers can use these APIs to create robust copilots, chatbots, and AI assistants from start to finish. Text Retriever NIM models are built on the NVIDIA software platform, incorporating CUDA, TensorRT, and Triton to offer out-of-the-box GPU acceleration. 
 
-Leveraging NVIDIA’s GPU acceleration on Google Cloud Platform, Nemo Retriever NIM offers an efficient and scalable path to inference with unparalleled performance.
+Leveraging NVIDIA’s GPU acceleration on Google Cloud Platform, NeMo Retriever NIM offers an efficient and scalable path to inference with unparalleled performance.
 
 This repository demonstrates NeMo Retriever Text Embedding NIM (NREM NIM) [nv-embedqa-e5-v5](https://build.nvidia.com/nvidia/nv-embedqa-e5-v5) deploy and inference on **GCP Vertex AI** with NVIDIA GPUs.
 
