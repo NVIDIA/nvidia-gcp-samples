@@ -47,6 +47,14 @@ For some demos the sample code will be part of this repo, and for some demos we 
  - [NVIDIA Merlin recommender system on GCP Vertex AI](https://github.com/GoogleCloudPlatform/nvidia-merlin-on-vertex-ai)
  - [AutoML Videl Edge on NVIDIA GPU](https://github.com/google/automl-video-ondevice) 
 
+### NIM Microservice and NeMo:
+ - [LLM NIM on Google Kubernetes Engine](https://github.com/NVIDIA/nvidia-gcp-samples/tree/nim-gcp/nim-samples/llm-nim/gke)
+ - [LLM NIM on GCP Vertex AI Workbench](https://github.com/NVIDIA/nvidia-gcp-samples/tree/nim-gcp/nim-samples/llm-nim/vertexai/workbench)
+ - [LLM NIM on GCP Vertex AI Colab Enterprise](https://github.com/NVIDIA/nvidia-gcp-samples/tree/nim-gcp/nim-samples/llm-nim/vertexai/colab-enterprise)
+ - [LLM NIM on GCP CloudRun](https://github.com/NVIDIA/nvidia-gcp-samples/tree/nim-gcp/nim-samples/llm-nim/cloudrun)
+ - [NeMo Retriever NIM on GCP Vertex AI Workbench](https://github.com/FortunaZhang/nvidia-gcp-samples/tree/nim-gcp/nim-samples/nemo-retriever/vertexai/workbench)
+
+
 ## Additional Resources
 
 See the following resources to learn more about NVIDIA NGC and GPU resources in Google Cloud Platform
