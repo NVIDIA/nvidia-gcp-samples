@@ -11,8 +11,9 @@
 
 ## Description
 
-This repository contains sample applications for NVIDIA software tool working with GCP platforms (ai platform, Dataproc, GKE, etc).
-For some demos the sample code will be part of this repo, and for some demos we would link to some great demos outside of this repo.
+This repository maintains sample applications designed for NVIDIA software tools integrated with Google Cloud Platform (GCP), e.g. AI platform, Dataproc, GKE, etc.
+
+For select demonstrations, the sample code will be contained within this repository. For others, we will reference and link to exceptional demonstrations available outside of this repository.
 
 
 ## Prerequisites
@@ -47,6 +48,14 @@ For some demos the sample code will be part of this repo, and for some demos we 
  - [NVIDIA Merlin recommender system on GCP Vertex AI](https://github.com/GoogleCloudPlatform/nvidia-merlin-on-vertex-ai)
  - [AutoML Videl Edge on NVIDIA GPU](https://github.com/google/automl-video-ondevice) 
 
+### NIM Microservice and NeMo:
+ - [LLM NIM on Google Kubernetes Engine](https://github.com/NVIDIA/nvidia-gcp-samples/tree/nim-gcp/nim-samples/llm-nim/gke)
+ - [LLM NIM on GCP Vertex AI Workbench](https://github.com/NVIDIA/nvidia-gcp-samples/tree/nim-gcp/nim-samples/llm-nim/vertexai/workbench)
+ - [LLM NIM on GCP Vertex AI Colab Enterprise](https://github.com/NVIDIA/nvidia-gcp-samples/tree/nim-gcp/nim-samples/llm-nim/vertexai/colab-enterprise)
+ - [LLM NIM on GCP Cloud Run](https://github.com/NVIDIA/nvidia-gcp-samples/tree/nim-gcp/nim-samples/llm-nim/cloudrun)
+ - [NeMo Retriever NIM on GCP Vertex AI Workbench](https://github.com/NVIDIA/nvidia-gcp-samples/tree/nim-gcp/nim-samples/nemo-retriever/vertexai/workbench)
+
+
 ## Additional Resources
 
 See the following resources to learn more about NVIDIA NGC and GPU resources in Google Cloud Platform
@@ -62,6 +71,9 @@ See the following resources to learn more about NVIDIA NGC and GPU resources in 
 ## Known Issues
 
 NA
+
+## Contributions
+Contributions are welcome. Developers can contribute by opening a [pull request](https://help.github.com/en/articles/about-pull-requests) and agreeing to the terms in [CONTRIBUTING.MD](CONTRIBUTING.md).
 
 ## License
 
