@@ -37,6 +37,34 @@ Please note NIM supports [TensorRT-LLM](https://docs.nvidia.com/tensorrt-llm/ind
 
 [<img src="imgs/vertexai_01.png" width="750"/>](HighLevelArch)
 
+#### GPU Requirements for NIM
+Optimized Configurations of different GPU types to run NIM could be found in [Support Matrix](https://docs.nvidia.com/nim/large-language-models/latest/support-matrix.html#), below are recommended GPUs available on GCP.
+
+###### Llama 3 8B Instruct
+
+| GPU  | Precision |   Profile  | \# of GPUS |  NIM Engine  |   GCP Machine Type  |         GPU Name        |
+| ---- | --------- | ---------- | ---------- | ------------ | ------------------- | ----------------------- |
+| H100 | FP8       | Throughput | 1          | TensorRT-LLM | A3 `a3-megagpu-8g`  | `nvidia-h100-mega-80gb` |
+| H100 | FP8       | Latency    | 2          | TensorRT-LLM | A3 `a3-megagpu-8g`  | `nvidia-h100-mega-80gb` |
+| H100 | FP16      | Throughput | 1          | TensorRT-LLM | A3 `a3-megagpu-8g`  | `nvidia-h100-mega-80gb` |
+| H100 | FP16      | Latency    | 2          | TensorRT-LLM | A3 `a3-megagpu-8g`  | `nvidia-h100-mega-80gb` |
+| A100 | FP16      | Throughput | 1          | TensorRT-LLM | A2 `a2-ultragpu-1g` | `nvidia-a100-80gb`      |
+| A100 | FP16      | Latency    | 2          | TensorRT-LLM | A2 `a2-ultragpu-1g` | `nvidia-a100-80gb`      |
+| L4   | FP16      |            | 1          | vLLM         | G2 `g2-standard-12` | `nvidia-l4`             |
+
+###### Llama 3 70B Instruct
+
+| GPU  | Precision |   Profile  | \# of GPUS |  NIM Engine  |   GCP Machine Type  |         GPU Name        |
+| ---- | --------- | ---------- | ---------- | ------------ | ------------------- | --------------------- |
+| H100 | FP8       | Throughput | 4          | TensorRT-LLM | A3 `a3-megagpu-8g`  | `nvidia-h100-mega-80gb` |
+| H100 | FP8       | Latency    | 8          | TensorRT-LLM | A3 `a3-megagpu-8g`  | `nvidia-h100-mega-80gb` |
+| H100 | FP16      | Throughput | 4          | TensorRT-LLM | A3 `a3-megagpu-8g`  | `nvidia-h100-mega-80gb` |
+| H100 | FP16      | Latency    | 8          | TensorRT-LLM | A3 `a3-megagpu-8g`  | `nvidia-h100-mega-80gb` |
+| A100 | FP16      | Throughput | 4          | TensorRT-LLM | A2 `a2-ultragpu-4g` | `nvidia-a100-80gb`      |
+| L4   | FP16      |            | 8          | vLLM         | G2 `g2-standard-96` | `nvidia-l4`             |
+
+For GPU availability in Regions and Zones, please refer to Guide [here](https://cloud.google.com/compute/docs/gpus/gpu-regions-zones).
+
 ### 2. Run NIM on JupyterLab Notebook
 `OPEN JUPYTERLAB` of the instance, and install required packages per `requirements.txt`. 
 
@@ -176,7 +204,7 @@ Response
     --request POST \
     --header "Authorization: Bearer $(gcloud auth print-access-token)" \
     --header "Content-Type: application/json" \
-    https://us-central1-prediction-aiplatform.googleapis.com/v1/projects/$project_id/locations/$region/endpoints/$ENDPOINT_ID:rawPredict \
+    https://$region-prediction-aiplatform.googleapis.com/v1/projects/$project_id/locations/$region/endpoints/$ENDPOINT_ID:rawPredict \
     --data "@request.json"
 ```
 ```shell
