@@ -50,7 +50,7 @@ For select demonstrations, the sample code will be contained within this reposit
 
 ### NIM Microservice and NeMo:
  - [LLM NIM on Google Kubernetes Engine](https://github.com/NVIDIA/nvidia-gcp-samples/blob/master/nim-samples/llm-nim/gke)
- - [LLM NIM on GCP Vertex AI Workbench](https://github.com/NVIDIA/nvidia-gcp-samples/tree/blob/master/nim-samples/llm-nim/vertexai/workbench)
+ - [LLM NIM on GCP Vertex AI Workbench](https://github.com/NVIDIA/nvidia-gcp-samples/blob/master/nim-samples/llm-nim/vertexai/workbench)
  - [LLM NIM on GCP Vertex AI Colab Enterprise](https://github.com/NVIDIA/nvidia-gcp-samples/blob/master/nim-samples/llm-nim/vertexai/colab-enterprise)
  - [LLM NIM on GCP Cloud Run](https://github.com/NVIDIA/nvidia-gcp-samples/blob/master/nim-samples/llm-nim/cloudrun)
  - [NeMo Retriever NIM on GCP Vertex AI Workbench](https://github.com/NVIDIA/nvidia-gcp-samples/blob/master/nim-samples/nemo-retriever/vertexai/workbench)
