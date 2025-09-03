@@ -22,7 +22,7 @@ gcloud container clusters create ${CLUSTER_NAME} \
  	--project=${PROJECT_ID} \
  	--location=${ZONE} \
 	--subnetwork=default \
-  --disk-size=${DISK_SIZE} \
+    --disk-size=${DISK_SIZE} \
 	--machine-type=${CLUSTER_MACHINE_TYPE} \
  	--num-nodes=1
 ```
@@ -36,12 +36,12 @@ gcloud container node-pools create gpu-pool \
  	--location=${ZONE} \
  	--cluster=${CLUSTER_NAME} \
 	--machine-type=${NODE_POOL_MACHINE_TYPE} \
-      --disk-size=${DISK_SIZE} \
-      --service-account=${SA} \
-      --num-nodes=1 \
-      --enable-autoscaling \
-      --min-nodes=1 \
-      --max-nodes=3
+    --disk-size=${DISK_SIZE} \
+    --service-account=${SA} \
+    --num-nodes=1 \
+    --enable-autoscaling \
+    --min-nodes=1 \
+    --max-nodes=3
 ```
 
 ###  Install helm
