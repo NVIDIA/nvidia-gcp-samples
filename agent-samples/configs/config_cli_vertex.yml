@@ -1,0 +1,104 @@
+# This is the default configuration for the CLI mode.
+# It has the following features:
+# - Human-in-the-loop clarification and plan approval before deep research starts
+# - Web search enabled by default
+# - There is no knowledge retrieval
+
+general:
+  telemetry:
+    logging:
+      console:
+        _type: console
+        level: INFO
+    # tracing:
+    #   phoenix:
+    #     _type: phoenix
+    #     endpoint: http://localhost:6006/v1/traces
+    #     project: dev
+
+llms:
+  nemotron_llm_intent:
+    _type: openai
+    model_name: ${MODEL}
+    base_url: ${ENDPOINT_URL}
+    api_key: ${OPENAI_API_KEY}
+    temperature: 0.5
+    top_p: 0.9
+    max_tokens: 4096
+    num_retries: 5
+    # chat_template_kwargs:
+    #   enable_thinking: true
+
+  nemotron_llm:
+    _type: openai
+    model_name: ${MODEL}
+    base_url: ${ENDPOINT_URL}
+    api_key: ${OPENAI_API_KEY}
+    temperature: 0.1
+    top_p: 0.3
+    max_tokens: 16384
+    num_retries: 5
+    # chat_template_kwargs:
+    #   enable_thinking: true
+  
+  nemotron_llm_deep:
+    _type: openai
+    model_name: ${MODEL}
+    base_url: ${ENDPOINT_URL}
+    api_key: ${OPENAI_API_KEY}
+    temperature: 1.0
+    top_p: 1.0 
+    max_tokens: 128000
+    num_retries: 5
+    # chat_template_kwargs:
+    #   enable_thinking: true
+
+functions:
+  web_search_tool:
+    _type: tavily_web_search
+    max_results: 5
+    max_content_length: 3000
+
+  advanced_web_search_tool:
+    _type: tavily_web_search
+    max_results: 2
+    advanced_search: true
+
+  intent_classifier:
+    _type: intent_classifier
+    llm: nemotron_llm_intent
+    # llm_timeout: 90  # optional; seconds for intent LLM call (default 90)
+    tools:
+      - web_search_tool
+
+  clarifier_agent:
+    _type: clarifier_agent
+    llm: nemotron_llm
+    planner_llm: nemotron_llm
+    tools:
+      - web_search_tool
+    max_turns: 3
+    enable_plan_approval: false
+    log_response_max_chars: 2000
+    verbose: true
+
+  shallow_research_agent:
+    _type: shallow_research_agent
+    llm: nemotron_llm
+    tools:
+      - web_search_tool
+    max_llm_turns: 10
+    max_tool_calls: 5
+
+  deep_research_agent:
+    _type: deep_research_agent
+    orchestrator_llm: nemotron_llm_deep
+    max_loops: 2
+    tools:
+      - advanced_web_search_tool
+
+workflow:
+  _type: chat_deepresearcher_agent
+  enable_escalation: true
+  enable_clarifier: false
+  checkpoint_db: ${AIQ_CHECKPOINT_DB:-./checkpoints.db}
