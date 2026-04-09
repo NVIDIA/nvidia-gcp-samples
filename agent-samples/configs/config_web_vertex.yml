@@ -1,0 +1,144 @@
+# Web mode configuration for Vertex AI deployment.
+#
+# Vertex custom endpoints (NIM) only support :rawPredict, not /chat/completions.
+# This config uses _type: openai pointing at a local proxy (vertex-proxy) that
+# translates /chat/completions → Vertex :rawPredict.
+#
+# Required environment variables:
+#   MODEL          - e.g. nvidia/llama-3.3-nemotron-super-49b-v1.5
+#   ENDPOINT_URL   - proxy URL, e.g. http://vertex-proxy:8765/v1
+#   OPENAI_API_KEY - gcloud access token (or placeholder if proxy fetches via metadata server)
+#   TAVILY_API_KEY - for web search
+
+general:
+  use_uvloop: true
+  telemetry:
+    logging:
+      console:
+        _type: console
+        level: INFO
+
+  front_end:
+    _type: aiq_api
+    runner_class: aiq_api.plugin.AIQAPIWorker
+    db_url: ${NAT_JOB_STORE_DB_URL:-sqlite+aiosqlite:///./jobs.db}
+    expiry_seconds: 86400
+    cors:
+      allow_origin_regex: 'http://localhost(:\d+)?|http://127.0.0.1(:\d+)?'
+      allow_methods:
+        - GET
+        - POST
+        - DELETE
+        - OPTIONS
+      allow_headers:
+        - "*"
+      allow_credentials: true
+      expose_headers:
+        - "*"
+
+llms:
+  nemotron_llm_intent:
+    _type: openai
+    model_name: ${MODEL}
+    base_url: ${ENDPOINT_URL}
+    api_key: ${OPENAI_API_KEY}
+    temperature: 0.5
+    top_p: 0.9
+    max_tokens: 4096
+    num_retries: 5
+
+  nemotron_llm:
+    _type: openai
+    model_name: ${MODEL}
+    base_url: ${ENDPOINT_URL}
+    api_key: ${OPENAI_API_KEY}
+    temperature: 0.1
+    top_p: 0.3
+    max_tokens: 16384
+    num_retries: 5
+
+  nemotron_llm_deep:
+    _type: openai
+    model_name: ${MODEL}
+    base_url: ${ENDPOINT_URL}
+    api_key: ${OPENAI_API_KEY}
+    temperature: 1.0
+    top_p: 1.0
+    max_tokens: 128000
+    num_retries: 5
+
+  summary_llm:
+    _type: openai
+    model_name: ${MODEL}
+    base_url: ${ENDPOINT_URL}
+    api_key: ${OPENAI_API_KEY}
+    temperature: 0.3
+    max_tokens: 100
+
+functions:
+  web_search_tool:
+    _type: tavily_web_search
+    max_results: 5
+    max_content_length: 1000
+
+  advanced_web_search_tool:
+    _type: tavily_web_search
+    max_results: 2
+    advanced_search: true
+
+  knowledge_search:
+    _type: knowledge_retrieval
+    backend: llamaindex
+    collection_name: ${COLLECTION_NAME:-test_collection}
+    generate_summary: true
+    summary_model: summary_llm
+    summary_db: ${AIQ_SUMMARY_DB:-sqlite+aiosqlite:///./summaries.db}
+    top_k: 5
+    chroma_dir: ${AIQ_CHROMA_DIR:-/tmp/chroma_data}
+
+  intent_classifier:
+    _type: intent_classifier
+    llm: nemotron_llm_intent
+    verbose: true
+    tools:
+      - web_search_tool
+      - knowledge_search
+
+  clarifier_agent:
+    _type: clarifier_agent
+    llm: nemotron_llm
+    planner_llm: nemotron_llm
+    tools:
+      - web_search_tool
+      - knowledge_search
+    max_turns: 3
+    enable_plan_approval: true
+    log_response_max_chars: 2000
+    verbose: true
+
+  shallow_research_agent:
+    _type: shallow_research_agent
+    llm: nemotron_llm
+    verbose: true
+    tools:
+      - web_search_tool
+      - knowledge_search
+    max_llm_turns: 10
+    max_tool_iterations: 5
+
+  deep_research_agent:
+    _type: deep_research_agent
+    orchestrator_llm: nemotron_llm_deep
+    max_loops: 2
+    verbose: true
+    tools:
+      - advanced_web_search_tool
+      - knowledge_search
+
+workflow:
+  _type: chat_deepresearcher_agent
+  verbose: true
+  enable_escalation: true
+  enable_clarifier: true
+  use_async_deep_research: true
+  checkpoint_db: ${AIQ_CHECKPOINT_DB:-./checkpoints.db}
