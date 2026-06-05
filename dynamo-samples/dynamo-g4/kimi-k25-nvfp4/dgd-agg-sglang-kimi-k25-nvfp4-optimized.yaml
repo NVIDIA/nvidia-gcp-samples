@@ -1,0 +1,282 @@
+# Dynamo aggregated deployment for Kimi K2.5 NVFP4 — optimized variant.
+#
+# Topology: 2-node TP=8 + PP=2 (same as the parity baseline / Standalone reference).
+# Engine config matches the parity DGD; the optimization stack adds Dynamo-side
+# capabilities for shared-prefix workloads:
+#   1. KV events ENABLED on Frontend → Dynamo router sees real-time cache state
+#   2. Radix cache enabled → high prefix-cache hit on shared-prefix workloads
+#   3. --enable-tokenizer-batch-encode → tokenizer CPU not a bottleneck at high concurrency
+#   4. --num-continuous-decode-steps 2 → reduce per-step Python overhead at high concurrency
+#   5. --kv-cache-dtype bfloat16 + --mem-fraction-static 0.82 (matches parity baseline)
+#
+# Apply with a shared-prefix benchmark workload to see Dynamo's KV-aware routing benefit.
+# Same DGD name as the parity baseline → swap with kubectl delete + apply.
+---
+apiVersion: nvidia.com/v1alpha1
+kind: DynamoGraphDeployment
+metadata:
+  name: agg-sglang-kimi-k25-nvfp4
+  namespace: default
+spec:
+  services:
+    Frontend:
+      componentType: frontend
+      replicas: 1
+      extraPodSpec:
+        imagePullSecrets:
+          - name: nvcr-imagepullsecret
+        mainContainer:
+          image: nvcr.io/nvidia/ai-dynamo/sglang-runtime:1.1.0
+          command: ["python3"]
+          args:
+            - -m
+            - dynamo.frontend
+            - --router-mode
+            - kv                  # KV-aware routing (events enabled by default)
+          env:
+            - name: POD_UID
+              valueFrom: { fieldRef: { fieldPath: metadata.uid } }
+            - name: HF_HOME
+              value: /model-cache
+            - name: HF_HUB_CACHE
+              value: /model-cache/.model-express/cache
+          volumeMounts:
+            - mountPath: /model-cache
+              name: model-cache
+        volumes:
+          - name: model-cache
+            persistentVolumeClaim:
+              claimName: model-cache
+
+    ModelExpress:
+      componentType: frontend
+      replicas: 1
+      envFromSecret: hf-token-secret
+      resources:
+        limits:   { cpu: "4", memory: 16Gi }
+        requests: { cpu: "1", memory: 4Gi }
+      livenessProbe:
+        tcpSocket: { port: 8000 }
+        initialDelaySeconds: 120
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 10
+      readinessProbe:
+        tcpSocket: { port: 8000 }
+        initialDelaySeconds: 60
+        periodSeconds: 15
+        timeoutSeconds: 10
+        failureThreshold: 10
+      extraPodSpec:
+        imagePullSecrets:
+          - name: nvcr-imagepullsecret
+        mainContainer:
+          image: nvcr.io/nvidia/ai-dynamo/modelexpress-server:0.3.0
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Starting Model Express Server..."
+              ./modelexpress-server &
+              SERVER_PID=$!
+
+              mkdir -p $MODEL_CACHE_PATH /model-cache/.model-express
+              cat > /model-cache/.model-express/config.yaml << EOF
+              local_path: $MODEL_CACHE_PATH
+              server_endpoint: http://localhost:8000
+              timeout_secs: null
+              EOF
+
+              for i in $(seq 1 60); do
+                if ./modelexpress-cli --endpoint http://localhost:8000 health > /dev/null 2>&1; then
+                  echo "Server is ready"
+                  break
+                fi
+                sleep 2
+              done
+
+              echo "Downloading $MODEL_NAME ..."
+              ./modelexpress-cli --endpoint http://localhost:8000 \
+                --cache-path $MODEL_CACHE_PATH \
+                model download "$MODEL_NAME"
+
+              SNAPSHOT_DIR=$(ls -td $MODEL_CACHE_PATH/models--$(echo $MODEL_NAME | sed 's|/|--|g')/snapshots/*/ 2>/dev/null | head -1)
+              if [ -n "$SNAPSHOT_DIR" ]; then
+                SNAPSHOTS_PARENT=$(dirname "$SNAPSHOT_DIR")
+                ln -sfn "$(basename "$SNAPSHOT_DIR")" "$SNAPSHOTS_PARENT/latest"
+              fi
+
+              wait $SERVER_PID
+          env:
+            - name: MODEL_EXPRESS_SERVER_PORT
+              value: "8000"
+            - name: MODEL_EXPRESS_LOGGING_LEVEL
+              value: info
+            - name: MODEL_EXPRESS_CACHE_DIRECTORY
+              value: /model-cache/.model-express/cache
+            - name: MX_METADATA_BACKEND
+              value: redis
+            - name: REDIS_URL
+              value: redis://redis-master.default.svc.cluster.local:6379
+            - name: MODEL_NAME
+              value: nvidia/Kimi-K2.5-NVFP4
+            - name: MODEL_CACHE_PATH
+              value: /model-cache/.model-express/cache
+            - name: HF_HUB_CACHE
+              value: /model-cache/.model-express/cache
+            - name: HF_XET_HIGH_PERFORMANCE
+              value: "1"
+          volumeMounts:
+            - mountPath: /model-cache
+              name: model-cache
+        volumes:
+          - name: model-cache
+            persistentVolumeClaim:
+              claimName: model-cache
+
+    agg:
+      componentType: worker
+      replicas: 1
+      # 2-node PP=2 single distributed worker — same topology as the parity baseline.
+      multinode:
+        nodeCount: 2
+      envFromSecret: hf-token-secret
+      resources:
+        limits:   { gpu: "8" }
+        requests: { gpu: "8" }
+      sharedMemory:
+        size: 80Gi
+      extraPodSpec:
+        hostNetwork: true
+        dnsPolicy: ClusterFirstWithHostNet
+        imagePullSecrets:
+          - name: nvcr-imagepullsecret
+        nodeSelector:
+          cloud.google.com/gke-accelerator: nvidia-rtx-pro-6000
+        tolerations:
+          - key: nvidia.com/gpu
+            operator: Exists
+            effect: NoSchedule
+          - key: cloud.google.com/gke-spot
+            operator: Exists
+            effect: NoSchedule
+          - key: cloud.google.com/gke-preemptible
+            operator: Exists
+            effect: NoSchedule
+        mainContainer:
+          image: nvcr.io/nvidia/ai-dynamo/sglang-runtime:1.1.0
+          workingDir: /workspace
+          securityContext:
+            runAsUser: 0
+          startupProbe:
+            httpGet: { path: /live, port: 9090 }
+            periodSeconds: 60
+            timeoutSeconds: 5
+            # 120 × 60s = 120 min. CUDA graph capture for Kimi NVFP4 + DP attention
+            # across many batch sizes can take 60-90+ minutes.
+            failureThreshold: 120
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              MODEL_NAME=nvidia/Kimi-K2.5-NVFP4
+              MODEL_DIR=/model-cache/.model-express/cache/models--$(echo $MODEL_NAME | sed 's|/|--|g')/snapshots/latest
+
+              echo "Waiting for model snapshot at $MODEL_DIR ..."
+              for i in $(seq 1 1800); do
+                if [ -f "$MODEL_DIR/config.json" ]; then
+                  echo "Model snapshot ready."
+                  break
+                fi
+                sleep 2
+              done
+              if [ ! -f "$MODEL_DIR/config.json" ]; then
+                echo "ERROR: model snapshot not found at $MODEL_DIR"
+                exit 1
+              fi
+
+              # SGLang launch — same 2-node PP=2 topology as the parity baseline.
+              # + stacked optimizations on top of the parity baseline:
+              #   - fp8_e5m2 KV cache (halves per-token KV → 2× effective concurrency)
+              #   - mem-fraction 0.82 → 0.87 (~15% more KV pool)
+              #   - radix cache re-enabled (was --disable-radix-cache in baseline; we
+              #     re-enable for shared-prefix workload via run-benchmark-opt.sh)
+              #   - +--enable-tokenizer-batch-encode (reduces tokenizer CPU contention)
+              exec python3 -m dynamo.sglang \
+                --model-path "$MODEL_DIR" \
+                --served-model-name "$MODEL_NAME" \
+                --trust-remote-code \
+                --tensor-parallel-size 8 \
+                --pipeline-parallel-size 2 \
+                --dp-size 8 \
+                --enable-dp-attention \
+                --quantization modelopt_fp4 \
+                --disable-shared-experts-fusion \
+                --mem-fraction-static 0.82 \
+                --schedule-policy fcfs \
+                --chunked-prefill-size 16384 \
+                --kv-cache-dtype bfloat16 \
+                --reasoning-parser kimi_k2 \
+                --tool-call-parser kimi_k2 \
+                --enable-dp-lm-head \
+                --enable-fused-moe-sum-all-reduce \
+                --fp4-gemm-backend flashinfer_cutlass \
+                --attention-backend flashinfer \
+                --moe-runner-backend flashinfer_cutlass \
+                --enable-flashinfer-allreduce-fusion \
+                --disable-custom-all-reduce \
+                --enable-tokenizer-batch-encode \
+                --num-continuous-decode-steps 2 \
+                --enable-metrics \
+                --log-level info \
+                --host 0.0.0.0 \
+                --watchdog-timeout 3600
+          env:
+            - name: POD_UID
+              valueFrom: { fieldRef: { fieldPath: metadata.uid } }
+            - name: HF_HOME
+              value: /model-cache
+            - name: HF_HUB_CACHE
+              value: /model-cache/.model-express/cache
+            - name: MODEL_CACHE_PATH
+              value: /model-cache/.model-express/cache
+            - name: MODEL_EXPRESS_URL
+              value: http://agg-sglang-kimi-k25-nvfp4-modelexpress:8000
+            - name: TRITON_CACHE_DIR
+              value: /model-cache/.triton-cache
+            - name: NCCL_DEBUG
+              value: INFO
+            - name: NCCL_SOCKET_IFNAME
+              value: "eth0,eth1"
+            - name: NCCL_IB_DISABLE
+              value: "1"
+            - name: NCCL_P2P_LEVEL
+              value: SYS
+            - name: NCCL_SOCKET_NTHREADS
+              value: "8"
+            - name: NCCL_NSOCKS_PERTHREAD
+              value: "8"
+            - name: NCCL_MIN_NCHANNELS
+              value: "8"
+            - name: NCCL_ALLOC_P2P_NET_LL_BUFFERS
+              value: "1"
+            - name: SGLANG_ENABLE_JIT_DEEPGEMM
+              value: "0"
+            - name: SGLANG_ENABLE_DEEP_GEMM
+              value: "0"
+            - name: OMP_NUM_THREADS
+              value: "24"
+            - name: SGLANG_SET_CPU_AFFINITY
+              value: "1"
+            - name: SAFETENSORS_FAST_GPU
+              value: "1"
+            - name: PYTORCH_CUDA_ALLOC_CONF
+              value: "expandable_segments:True"
+            - name: FLASHINFER_DISABLE_VERSION_CHECK
+              value: "1"
+          volumeMounts:
+            - mountPath: /model-cache
+              name: model-cache
+        volumes:
+          - name: model-cache
+            persistentVolumeClaim:
+              claimName: model-cache
