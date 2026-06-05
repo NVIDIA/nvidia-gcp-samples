@@ -1,0 +1,164 @@
+# Raw SGLang baseline for Kimi K2.5 NVFP4 — 2-node g4 (RTX PRO 6000) GKE cluster.
+# Mirrors https://github.com/shivajid/sglang-rtx-pro-6000/blob/main/models/KimiK2.5/nvfp4/sglang-kimi-nvfp4-2node.yaml
+# flag-for-flag. Topology: TP=8 + PP=2 across 2 g4-standard-384 nodes as one
+# distributed SGLang worker (StatefulSet replicas=2 = the two pods of that worker).
+#
+# Why 2 nodes when NVFP4 (~370 GB) fits on 1: 2× KV cache pool capacity for OSL=8192
+# / conc=512 workloads, matching Google's reference topology for apples-to-apples
+# comparison with both the Standalone reference and the Dynamo parity DGD.
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kimi-k25-sglang-nvfp4
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kimi-k25-sglang-nvfp4
+  serviceName: "kimi-k25-sglang-nvfp4-master"
+  template:
+    metadata:
+      labels:
+        app: kimi-k25-sglang-nvfp4
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-rtx-pro-6000
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+        - key: cloud.google.com/gke-spot
+          operator: Exists
+          effect: NoSchedule
+        - key: cloud.google.com/gke-preemptible
+          operator: Exists
+          effect: NoSchedule
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: sglang
+          image: docker.io/lmsysorg/sglang:v0.5.10.post1 #docker.io/lmsysorg/sglang:dev-cu13
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+            - -c
+          args:
+            - |
+              python3 -m sglang.launch_server \
+                --model nvidia/Kimi-K2.5-NVFP4 \
+                --tensor-parallel-size 8 \
+                --pipeline-parallel-size 2 \
+                --dp-size 8 \
+                --enable-dp-attention \
+                --nnodes 2 \
+                --node-rank $POD_INDEX \
+                --port 8000 \
+                --dist-init-addr kimi-k25-sglang-nvfp4-master:5000 \
+                --trust-remote-code \
+                --quantization modelopt_fp4 \
+                --disable-shared-experts-fusion \
+                --mem-fraction-static 0.82 \
+                --schedule-policy fcfs \
+                --chunked-prefill-size 16384 \
+                --kv-cache-dtype bfloat16 \
+                --reasoning-parser kimi_k2 \
+                --tool-call-parser kimi_k2 \
+                --enable-dp-lm-head \
+                --enable-fused-moe-sum-all-reduce \
+                --disable-radix-cache \
+                --fp4-gemm-backend flashinfer_cutlass \
+                --attention-backend flashinfer \
+                --moe-runner-backend flashinfer_cutlass \
+                --enable-flashinfer-allreduce-fusion \
+                --disable-custom-all-reduce \
+                --host 0.0.0.0
+          env:
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hf-token-secret
+                  key: HF_TOKEN
+            - name: POD_INDEX
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.labels['apps.kubernetes.io/pod-index']
+            # NCCL — cross-node PP traffic uses eth0,eth1 on multi-NIC g4 nodes.
+            - name: NCCL_DEBUG
+              value: INFO
+            - name: NCCL_SOCKET_IFNAME
+              value: "eth0,eth1"
+            - name: NCCL_IB_DISABLE
+              value: "1"
+            - name: NCCL_P2P_LEVEL
+              value: SYS
+            - name: NCCL_SOCKET_NTHREADS
+              value: "8"
+            - name: NCCL_NSOCKS_PERTHREAD
+              value: "8"
+            - name: NCCL_MIN_NCHANNELS
+              value: "8"
+            - name: NCCL_ALLOC_P2P_NET_LL_BUFFERS
+              value: "1"
+            - name: OMP_NUM_THREADS
+              value: "24"
+            - name: SGLANG_SET_CPU_AFFINITY
+              value: "1"
+            - name: SAFETENSORS_FAST_GPU
+              value: "1"
+            - name: PYTORCH_CUDA_ALLOC_CONF
+              value: "expandable_segments:True"
+            - name: SGLANG_ENABLE_DEEP_GEMM
+              value: "0"
+            - name: SGLANG_ENABLE_JIT_DEEPGEMM
+              value: "0"
+          resources:
+            limits:
+              nvidia.com/gpu: "8"
+          volumeMounts:
+            - mountPath: /dev/shm
+              name: dshm
+            - mountPath: /root/.cache/huggingface
+              name: hf-cache
+          securityContext:
+            privileged: true
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 32Gi
+        - name: hf-cache
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kimi-k25-sglang-nvfp4-serving
+spec:
+  type: ClusterIP
+  selector:
+    app: kimi-k25-sglang-nvfp4
+    apps.kubernetes.io/pod-index: "0"
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+    - name: metrics
+      port: 8080
+      targetPort: 8080
+---
+# Headless service for SGLang distributed init (pod-0 acts as master, pod-1 connects in).
+apiVersion: v1
+kind: Service
+metadata:
+  name: kimi-k25-sglang-nvfp4-master
+spec:
+  clusterIP: None
+  selector:
+    app: kimi-k25-sglang-nvfp4
+    apps.kubernetes.io/pod-index: "0"
+  ports:
+    - name: dist-port
+      port: 5000
+      targetPort: 5000

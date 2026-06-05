@@ -1,0 +1,40 @@
+# Benchmark client pod for Kimi K2.5 NVFP4.
+# Installs both aiperf and sglang.bench_serving; harness selected by run-benchmark.sh.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: perf-kimi-k25-nvfp4
+  labels:
+    app: perf-kimi-k25-nvfp4
+spec:
+  restartPolicy: Never
+  containers:
+    - name: perf
+      image: python:3.12-slim
+      imagePullPolicy: IfNotPresent
+      command: ["/bin/bash", "-c"]
+      args:
+        - |
+          apt-get update -qq && apt-get install -y -qq git curl jq procps >/dev/null && apt-get clean
+          pip install -q "git+https://github.com/ai-dynamo/aiperf.git@main"
+          pip install -q "sglang[runtime_common]==0.5.10.post1"
+          echo "aiperf + sglang.bench_serving installed and ready"
+          exec sleep infinity
+      envFrom:
+        - secretRef:
+            name: hf-token-secret
+      env:
+        - name: TARGET_MODEL
+          value: nvidia/Kimi-K2.5-NVFP4
+        - name: ENDPOINT
+          value: agg-sglang-kimi-k25-nvfp4-frontend.default.svc.cluster.local:8000
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: AIPERF_HTTP_CONNECTION_LIMIT
+          value: "2000"
+      resources:
+        requests: { cpu: "1", memory: "4Gi" }
+        limits:   { cpu: "4", memory: "16Gi" }
+      securityContext:
+        privileged: true
+      workingDir: /workspace

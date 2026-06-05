@@ -1,0 +1,53 @@
+# Benchmark client pod for Kimi K2.5 Native INT4 — 2-node g4 (RTX PRO 6000) GKE cluster.
+# Supports two harnesses via the three benchmark scripts in this directory:
+#   - run-benchmark-natural-eos.sh   bench_serving, variable OSL — Google methodology
+#   - run-benchmark-parity.sh        aiperf, locked OSL=8192, deterministic — Dynamo parity
+#   - run-benchmark-opt-shared.sh    aiperf, 80% shared prefix, locked OSL — optimized template
+# Both aiperf and sglang.bench_serving are pre-installed by the entrypoint.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: perf-kimi-k25-int4
+  labels:
+    app: perf-kimi-k25-int4
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    workload: perf-client    # dedicated n2-standard-8 perf-pool (32 GB / 8 vCPU)
+  containers:
+    - name: perf
+      image: python:3.12-slim
+      imagePullPolicy: IfNotPresent
+      command: ["/bin/bash", "-c"]
+      args:
+        - |
+          apt-get update -qq && apt-get install -y -qq git curl jq procps >/dev/null && apt-get clean
+          # NVIDIA aiperf — for cross-comparison with old g4-dynamo runs.
+          pip install -q "git+https://github.com/ai-dynamo/aiperf.git@main"
+          # SGLang bench_serving — for direct match to Google reference numbers.
+          pip install -q "sglang[runtime_common]==0.5.10.post1"
+          echo "aiperf + sglang.bench_serving installed and ready"
+          exec sleep infinity
+      envFrom:
+        - secretRef:
+            name: hf-token-secret
+      env:
+        - name: TARGET_MODEL
+          value: moonshotai/Kimi-K2.5
+        # Default endpoint is the Dynamo Frontend on this cluster.
+        # Override to kimi-k25-sglang-serving.default.svc.cluster.local:8000 for the standalone baseline.
+        - name: ENDPOINT
+          value: agg-sglang-kimi-k25-int4-frontend.default.svc.cluster.local:8000
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        # Bump HTTP connection ceiling for conc=512 (matches NVFP4 perf pod).
+        - name: AIPERF_HTTP_CONNECTION_LIMIT
+          value: "2000"
+      resources:
+        # Pinned to perf-pool (n2-standard-8: 8 vCPU, 32 GB). Sized for full
+        # workers=64 at conc=512: ~16-20 GB peak memory, 2-4 cores burst.
+        requests: { cpu: "2", memory: "16Gi" }
+        limits:   { cpu: "8", memory: "28Gi" }
+      securityContext:
+        privileged: true
+      workingDir: /workspace
