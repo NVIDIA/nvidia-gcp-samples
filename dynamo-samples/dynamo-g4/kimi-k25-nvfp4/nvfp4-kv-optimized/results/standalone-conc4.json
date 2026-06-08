@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.3",
+  "aiperf_version": "0.11.0",
+  "benchmark_id": "5d7cfeee75f0",
+  "request_throughput": { "unit": "requests/sec", "avg": 0.016681078266211374 },
+  "request_latency": { "unit": "ms", "avg": 237987.3939242656, "p50": 236543.25811899998, "p90": 245090.93232929998, "p99": 245908.11427574998, "min": 235478.26548, "max": 245912.09157599998, "count": 64 },
+  "time_to_first_token": { "unit": "ms", "avg": 380.868310328125, "p50": 377.700585, "p90": 445.67504439999993, "p99": 459.60429449, "min": 242.909367, "max": 464.528486, "std": 62.629497349355894, "count": 64 },
+  "time_to_second_token": { "unit": "ms", "avg": 62.637617218749995, "p50": 45.8573665, "p90": 97.16499750000001, "p99": 159.71018006, "min": 16.951138999999998, "max": 159.79475, "count": 64 },
+  "inter_token_latency": { "unit": "ms", "avg": 29.008243879128003, "p50": 28.825806920522524, "p90": 29.876753563618607, "p99": 29.970691747842753, "min": 28.706250951410084, "max": 29.97552769844952, "count": 64 },
+  "output_token_throughput": { "unit": "tokens/sec", "avg": 136.65139315680358 },
+  "output_token_throughput_per_user": { "unit": "tokens/sec/user", "avg": 34.48025570375436, "p50": 34.691136474924015, "p90": 34.78297852917388, "p99": 34.83386175679892, "min": 33.36054697885185, "max": 34.83561826630233, "count": 64 },
+  "output_sequence_length": { "unit": "tokens", "avg": 8192.0, "p50": 8192.0, "count": 64 },
+  "input_sequence_length": { "unit": "tokens", "avg": 1050.9375, "p50": 1051.0, "count": 64 },
+  "benchmark_duration": { "unit": "sec", "avg": 3836.6824361490003 },
+  "total_token_throughput": { "unit": "tokens/sec", "avg": 154.1821638472001 },
+  "input_config": {
+    "models": { "items": [{ "name": "nvidia/Kimi-K2.5-NVFP4" }] },
+    "endpoint": { "urls": ["http://standalone-sglang-kimi-k25-frontend.default.svc.cluster.local:8000"], "type": "chat", "streaming": true },
+    "datasets": [{ "name": "main", "type": "synthetic", "entries": 64, "random_seed": 100, "prompts": { "isl": { "mean": 204.0, "stddev": 0.0 }, "osl": { "mean": 8192.0, "stddev": 0.0 } }, "prefix_prompts": { "pool_size": 32, "length": 820 } }],
+    "phases": [{ "name": "warmup", "type": "concurrency", "requests": 32, "concurrency": 4 }, { "name": "profiling", "type": "concurrency", "requests": 64, "concurrency": 4 }]
+  },
+  "run_info": { "benchmark_id": "5d7cfeee75f0", "random_seed": 100, "trial": 0 },
+  "was_cancelled": false,
+  "error_summary": [],
+  "start_time": "2026-06-05T20:04:00.025309",
+  "end_time": "2026-06-05T21:07:56.799145",
+  "note": "Standalone crashed at concurrency=8 (both replicas OOM). Only conc=4 data available."
+}

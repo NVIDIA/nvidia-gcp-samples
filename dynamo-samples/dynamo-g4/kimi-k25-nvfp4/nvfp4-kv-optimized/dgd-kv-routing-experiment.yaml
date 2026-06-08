@@ -1,0 +1,325 @@
+# Dynamo KV-routing experiment DGD — Kimi K2.5 NVFP4 on RTX PRO 6000.
+#
+# Purpose: demonstrate Dynamo's KV-aware routing benefit on shared-prefix
+# workloads.  Engine flags are IDENTICAL to standalone-sglang-kimi-k25-nvfp4.yaml
+# so the only variable is the routing layer (random LB vs KV-aware).
+#
+# Topology: 2 independent single-node replicas, TP=8 each.
+#   - Frontend: --router-mode kv (KV events enabled, no --no-kv-events)
+#   - Workers: radix cache enabled (default), fp8_e4m3 KV cache
+#   - Same DGD name as the baseline so service URLs are consistent.
+#
+# Pair with run-kv-routing-sweep.sh to sweep prefix pool sizes and compare
+# TTFT against the Standalone SGLang baseline.
+#
+# Deploy:
+#   kubectl delete dgd agg-sglang-kimi-k25-nvfp4 --ignore-not-found
+#   kubectl apply -f dgd-kv-routing-experiment.yaml
+#   kubectl get pods -l nvidia.com/dynamo-graph-deployment-name=agg-sglang-kimi-k25-nvfp4 -w
+---
+apiVersion: nvidia.com/v1alpha1
+kind: DynamoGraphDeployment
+metadata:
+  name: agg-sglang-kimi-k25-nvfp4
+  namespace: default
+  annotations:
+    nvidia.com/enable-grove: "false"
+spec:
+  backendFramework: sglang
+
+  services:
+
+    # ------------------------------------------------------------------
+    # Frontend: KV-aware router
+    # Subscribes to worker KV events and routes each request to the
+    # replica with the best prefix overlap.  No --no-kv-events.
+    # ------------------------------------------------------------------
+    Frontend:
+      componentType: frontend
+      replicas: 1
+      extraPodSpec:
+        imagePullSecrets:
+        - name: nvcr-imagepullsecret
+        mainContainer:
+          image: nvcr.io/nvidia/ai-dynamo/sglang-runtime:1.1.0
+          command: ["python3"]
+          args:
+          - -m
+          - dynamo.frontend
+          - --router-mode
+          - kv
+          env:
+          - name: POD_UID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.uid
+          - name: HF_HOME
+            value: /model-cache
+          - name: HF_HUB_CACHE
+            value: /model-cache/.model-express/cache
+          volumeMounts:
+          - mountPath: /model-cache
+            name: model-cache
+        volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: model-cache
+
+    # ------------------------------------------------------------------
+    # ModelExpress: downloads nvidia/Kimi-K2.5-NVFP4 to the shared PVC
+    # ------------------------------------------------------------------
+    ModelExpress:
+      componentType: frontend
+      replicas: 1
+      envFromSecret: hf-token-secret
+      resources:
+        limits:   { cpu: "4", memory: 16Gi }
+        requests: { cpu: "1", memory: 4Gi }
+      livenessProbe:
+        tcpSocket: { port: 8000 }
+        initialDelaySeconds: 120
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 10
+      readinessProbe:
+        tcpSocket: { port: 8000 }
+        initialDelaySeconds: 60
+        periodSeconds: 15
+        timeoutSeconds: 10
+        failureThreshold: 10
+      extraPodSpec:
+        imagePullSecrets:
+        - name: nvcr-imagepullsecret
+        mainContainer:
+          image: nvcr.io/nvidia/ai-dynamo/modelexpress-server:0.3.0
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+          - |
+            echo "Starting Model Express Server..."
+            ./modelexpress-server &
+            SERVER_PID=$!
+
+            mkdir -p $MODEL_CACHE_PATH /model-cache/.model-express
+            cat > /model-cache/.model-express/config.yaml << EOF
+            local_path: $MODEL_CACHE_PATH
+            server_endpoint: http://localhost:8000
+            timeout_secs: null
+            EOF
+
+            for i in $(seq 1 60); do
+              if ./modelexpress-cli --endpoint http://localhost:8000 health > /dev/null 2>&1; then
+                echo "Server is ready"
+                break
+              fi
+              sleep 2
+            done
+
+            echo "Downloading $MODEL_NAME ..."
+            ./modelexpress-cli --endpoint http://localhost:8000 \
+              --cache-path $MODEL_CACHE_PATH \
+              model download "$MODEL_NAME" --strategy server-only
+
+            SNAPSHOT_DIR=$(ls -td $MODEL_CACHE_PATH/models--$(echo $MODEL_NAME | sed 's|/|--|g')/snapshots/*/ 2>/dev/null | head -1)
+            if [ -n "$SNAPSHOT_DIR" ]; then
+              SNAPSHOTS_PARENT=$(dirname "$SNAPSHOT_DIR")
+              ln -sfn "$(basename "$SNAPSHOT_DIR")" "$SNAPSHOTS_PARENT/latest"
+            fi
+
+            wait $SERVER_PID
+          env:
+          - name: MODEL_EXPRESS_SERVER_PORT
+            value: "8000"
+          - name: MODEL_EXPRESS_LOGGING_LEVEL
+            value: info
+          - name: MODEL_EXPRESS_CACHE_DIRECTORY
+            value: /model-cache/.model-express/cache
+          - name: MX_METADATA_BACKEND
+            value: redis
+          - name: REDIS_URL
+            value: redis://redis-master.default.svc.cluster.local:6379
+          - name: MODEL_NAME
+            value: nvidia/Kimi-K2.5-NVFP4
+          - name: MODEL_CACHE_PATH
+            value: /model-cache/.model-express/cache
+          - name: HF_HUB_CACHE
+            value: /model-cache/.model-express/cache
+          - name: HF_XET_HIGH_PERFORMANCE
+            value: "1"
+          volumeMounts:
+          - mountPath: /model-cache
+            name: model-cache
+        volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: model-cache
+
+    # ------------------------------------------------------------------
+    # Worker: aggregated dynamo.sglang — 2 replicas, single-node TP=8.
+    #
+    # Engine flags are IDENTICAL to standalone-sglang-kimi-k25-nvfp4.yaml
+    # so the comparison isolates only the routing layer.
+    # Radix cache is enabled (default, no --disable-radix-cache) so prefix
+    # caching works on both Standalone and Dynamo.
+    # ------------------------------------------------------------------
+    agg:
+      componentType: worker
+      replicas: 2
+      envFromSecret: hf-token-secret
+
+      resources:
+        limits:   { gpu: "8" }
+        requests: { gpu: "8", cpu: "16", memory: 128Gi }
+
+      sharedMemory:
+        size: 80Gi
+
+      extraPodSpec:
+        imagePullSecrets:
+        - name: nvcr-imagepullsecret
+        nodeSelector:
+          cloud.google.com/gke-accelerator: nvidia-rtx-pro-6000
+        tolerations:
+        - effect: NoSchedule
+          key: nvidia.com/gpu
+          operator: Exists
+        - effect: NoSchedule
+          key: cloud.google.com/gke-spot
+          operator: Exists
+        - effect: NoSchedule
+          key: cloud.google.com/gke-preemptible
+          operator: Exists
+        - effect: NoSchedule
+          key: node.kubernetes.io/disk-pressure
+          operator: Exists
+
+        mainContainer:
+          image: nvcr.io/nvidia/ai-dynamo/sglang-runtime:1.1.0
+          workingDir: /workspace
+          securityContext:
+            runAsUser: 0
+          startupProbe:
+            httpGet: { path: /live, port: 9090 }
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 600
+          readinessProbe:
+            httpGet: { path: /health, port: 9090 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          livenessProbe:
+            httpGet: { path: /live, port: 9090 }
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 20
+          command: ["/bin/sh", "-c"]
+          args:
+          - |
+            MODEL_NAME=nvidia/Kimi-K2.5-NVFP4
+            MODEL_DIR=/model-cache/.model-express/cache/models--$(echo $MODEL_NAME | sed 's|/|--|g')/snapshots/latest
+
+            echo "Waiting for model snapshot at $MODEL_DIR ..."
+            for i in $(seq 1 1800); do
+              if [ -f "$MODEL_DIR/config.json" ]; then
+                echo "Model snapshot ready."
+                break
+              fi
+              sleep 2
+            done
+            if [ ! -f "$MODEL_DIR/config.json" ]; then
+              echo "ERROR: model snapshot not found at $MODEL_DIR"
+              exit 1
+            fi
+
+            sleep $((RANDOM % 30))
+            export LD_LIBRARY_PATH=/usr/local/nvidia/lib64:$LD_LIBRARY_PATH
+            export PATH=$PATH:/usr/local/nvidia/bin:/usr/local/nvidia/lib64
+            /sbin/ldconfig 2>/dev/null || true
+            nvidia-smi topo -m
+
+            # Engine flags match standalone-sglang-kimi-k25-nvfp4.yaml exactly.
+            # Radix cache is enabled (default) so prefix caching works.
+            exec python3 -m dynamo.sglang \
+              --model-path "$MODEL_DIR" \
+              --served-model-name "$MODEL_NAME" \
+              --trust-remote-code \
+              --tp-size 8 \
+              --dp-size 8 \
+              --enable-dp-attention \
+              --quantization modelopt_fp4 \
+              --moe-runner-backend flashinfer_cutlass \
+              --fp4-gemm-backend flashinfer_cutlass \
+              --kv-cache-dtype fp8_e4m3 \
+              --attention-backend flashinfer \
+              --disable-custom-all-reduce \
+              --enable-flashinfer-allreduce-fusion \
+              --mem-fraction-static 0.97 \
+              --cuda-graph-max-bs 8 \
+              --max-running-requests 32 \
+              --chunked-prefill-size 16384 \
+              --context-length 16384 \
+              --page-size 64 \
+              --enable-mixed-chunk \
+              --reasoning-parser kimi_k2 \
+              --tool-call-parser kimi_k2 \
+              --enable-metrics \
+              --host 0.0.0.0 \
+              --watchdog-timeout 3600
+
+          env:
+          - name: POD_UID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.uid
+          - name: HF_HOME
+            value: /model-cache
+          - name: HF_HUB_CACHE
+            value: /model-cache/.model-express/cache
+          - name: MODEL_CACHE_PATH
+            value: /model-cache/.model-express/cache
+          - name: MODEL_EXPRESS_URL
+            value: http://agg-sglang-kimi-k25-nvfp4-modelexpress:8000
+          - name: TRITON_CACHE_DIR
+            value: /tmp/triton-cache
+          - name: SGLANG_MOE_NVFP4_DISPATCH
+            value: "1"
+          - name: SGLANG_ENABLE_JIT_DEEPGEMM
+            value: "0"
+          - name: SGLANG_ENABLE_DEEP_GEMM
+            value: "0"
+          - name: SGLANG_DISABLE_DEEP_GEMM
+            value: "1"
+          - name: SGLANG_DISABLE_TP_MEMORY_INBALANCE_CHECK
+            value: "1"
+          - name: DYN_SKIP_SGLANG_LOG_FORMATTING
+            value: "1"
+          - name: NCCL_IB_DISABLE
+            value: "1"
+          - name: NCCL_P2P_LEVEL
+            value: SYS
+          - name: NCCL_MIN_NCHANNELS
+            value: "8"
+          - name: NCCL_ALLOC_P2P_NET_LL_BUFFERS
+            value: "1"
+          - name: OMP_NUM_THREADS
+            value: "24"
+          - name: SGLANG_SET_CPU_AFFINITY
+            value: "1"
+          - name: SAFETENSORS_FAST_GPU
+            value: "1"
+          - name: PYTORCH_CUDA_ALLOC_CONF
+            value: "expandable_segments:True"
+          - name: FLASHINFER_DISABLE_VERSION_CHECK
+            value: "1"
+
+          volumeMounts:
+          - mountPath: /model-cache
+            name: model-cache
+        volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: model-cache

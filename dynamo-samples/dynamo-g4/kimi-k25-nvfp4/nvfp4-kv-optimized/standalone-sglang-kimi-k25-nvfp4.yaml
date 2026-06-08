@@ -1,0 +1,174 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: standalone-sglang-kimi-k25-nvfp4
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: standalone-sglang-kimi-k25-nvfp4
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: standalone-sglang-kimi-k25-nvfp4
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-rtx-pro-6000
+      tolerations:
+      - effect: NoSchedule
+        key: nvidia.com/gpu
+        operator: Exists
+      - effect: NoSchedule
+        key: cloud.google.com/gke-spot
+        operator: Exists
+      - effect: NoSchedule
+        key: cloud.google.com/gke-preemptible
+        operator: Exists
+      imagePullSecrets:
+      - name: nvcr-imagepullsecret
+      containers:
+      - name: sglang
+        image: nvcr.io/nvidia/ai-dynamo/sglang-runtime:1.1.0
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -c
+        args:
+        - |
+          export LD_LIBRARY_PATH=/usr/local/nvidia/lib64:$LD_LIBRARY_PATH
+          export PATH=$PATH:/usr/local/nvidia/bin:/usr/local/nvidia/lib64
+          /sbin/ldconfig 2>/dev/null || true
+          nvidia-smi topo -m
+
+          exec python3 -m sglang.launch_server \
+            --model nvidia/Kimi-K2.5-NVFP4 \
+            --served-model-name nvidia/Kimi-K2.5-NVFP4 \
+            --trust-remote-code \
+            --tp-size 8 \
+            --dp-size 8 \
+            --enable-dp-attention \
+            --quantization modelopt_fp4 \
+            --moe-runner-backend flashinfer_cutlass \
+            --fp4-gemm-backend flashinfer_cutlass \
+            --kv-cache-dtype fp8_e4m3 \
+            --attention-backend flashinfer \
+            --disable-custom-all-reduce \
+            --enable-flashinfer-allreduce-fusion \
+            --mem-fraction-static 0.97 \
+            --cuda-graph-max-bs 8 \
+            --max-running-requests 32 \
+            --chunked-prefill-size 16384 \
+            --context-length 16384 \
+            --page-size 64 \
+            --enable-mixed-chunk \
+            --reasoning-parser kimi_k2 \
+            --tool-call-parser kimi_k2 \
+            --enable-metrics \
+            --host 0.0.0.0 \
+            --port 8000 \
+            --watchdog-timeout 3600
+        envFrom:
+        - secretRef:
+            name: hf-token-secret
+            optional: true
+        env:
+        - name: HF_HOME
+          value: /model-cache
+        - name: HF_HUB_CACHE
+          value: /model-cache/.model-express/cache
+        - name: MODEL_CACHE_PATH
+          value: /model-cache/.model-express/cache
+        - name: TRITON_CACHE_DIR
+          value: /tmp/triton-cache
+        - name: SGLANG_MOE_NVFP4_DISPATCH
+          value: "1"
+        - name: SGLANG_ENABLE_JIT_DEEPGEMM
+          value: "0"
+        - name: SGLANG_ENABLE_DEEP_GEMM
+          value: "0"
+        - name: SGLANG_DISABLE_DEEP_GEMM
+          value: "1"
+        - name: SGLANG_DISABLE_TP_MEMORY_INBALANCE_CHECK
+          value: "1"
+        - name: NCCL_IB_DISABLE
+          value: "1"
+        - name: NCCL_P2P_LEVEL
+          value: SYS
+        - name: NCCL_MIN_NCHANNELS
+          value: "8"
+        - name: NCCL_ALLOC_P2P_NET_LL_BUFFERS
+          value: "1"
+        - name: OMP_NUM_THREADS
+          value: "24"
+        - name: SGLANG_SET_CPU_AFFINITY
+          value: "1"
+        - name: SAFETENSORS_FAST_GPU
+          value: "1"
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        - name: FLASHINFER_DISABLE_VERSION_CHECK
+          value: "1"
+        resources:
+          limits:
+            nvidia.com/gpu: "8"
+          requests:
+            cpu: "16"
+            memory: 128Gi
+            nvidia.com/gpu: "8"
+        ports:
+        - containerPort: 8000
+          name: http
+        - containerPort: 8080
+          name: metrics
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 60
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 600
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /dev/shm
+          name: shm
+        - mountPath: /model-cache
+          name: model-cache
+        workingDir: /workspace
+      volumes:
+      - emptyDir:
+          medium: Memory
+          sizeLimit: 80Gi
+        name: shm
+      - name: model-cache
+        persistentVolumeClaim:
+          claimName: model-cache
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: standalone-sglang-kimi-k25-frontend
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: standalone-sglang-kimi-k25-nvfp4
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+  - name: metrics
+    port: 8080
+    targetPort: 8080
