@@ -153,7 +153,7 @@ Note: At the same concurrency (5), Dynamo delivers 2.3x lower TTFT and 25% highe
 
 ## Why Dynamo Wins
 
-### Standalone's hard ceiling: concurrency=4
+### Standalone's hard ceiling: concurrency=5
 
 Conc=8 crashed both standalone pods even on a fresh start (cold cache, no prior load). The standalone simply cannot handle 8 concurrent long-output requests with 32 prefixes in the KV pool.
 
