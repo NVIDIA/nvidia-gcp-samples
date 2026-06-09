@@ -11,7 +11,7 @@ NVIDIA Dynamo + SGLang reference deployment for **Kimi K2.5 NVFP4** on Google Cl
 | `run-benchmark-natural-eos.sh` | bench_serving / aiperf with **variable OSL** (natural EOS termination) — matches Google's published methodology, direct apples-to-apples comparison |
 | `run-benchmark-parity.sh` | aiperf-based parity benchmark — same workload to both Standalone and Dynamo endpoints, locked OSL=8192, deterministic sampling |
 | `benchmark-kimi-k25-nvfp4-pod.yaml` | aiperf client pod (runs the benchmark scripts against either endpoint) |
-| [`nvfp4-kv-optimized/`](./nvfp4-kv-optimized/) | **Goal 3 — Dynamo KV-aware routing on shared-prefix workload** (2-replica × TP=8 single-node). Validated results: 3.2× sustainable concurrency, 38-57% lower TTFT vs Standalone |
+| [`nvfp4-kv-optimized/`](./nvfp4-kv-optimized/) | **Goal 3 — Dynamo optimized** (KV-aware routing on shared-prefix workload, 2-replica × TP=8 single-node). Validated results: 3.2× sustainable concurrency, 38-57% lower TTFT vs Standalone |
 
 ## Topology
 
@@ -51,8 +51,8 @@ kubectl exec perf-kimi-k25-nvfp4 -- bash -c \
 kubectl exec perf-kimi-k25-nvfp4 -- bash -c \
   'nohup setsid /workspace/run-benchmark-parity.sh dynamo > /workspace/bench.log 2>&1 &'
 
-# Use case 3 — Goal 3 (Dynamo KV-aware routing): 2-replica × TP=8 single-node,
-# shared-prefix workload, concurrency sweep. See nvfp4-kv-optimized/README.md for setup
+# Use case 3 — Goal 3 (Dynamo optimized): KV-aware routing on shared-prefix workload.
+# 2-replica × TP=8 single-node, concurrency sweep. See nvfp4-kv-optimized/README.md for setup
 # (different topology + DGD from the parity DGD above).
 ```
 
@@ -80,4 +80,4 @@ Workload: ISL=1024, OSL=8192, conc=512, 1,536 prompts. **bold** = directly compa
 **Reading guide:**
 - **Goal 1** (NVIDIA Standalone vs Google): direct apples-to-apples — both use `bench_serving` + variable OSL. NVIDIA Standalone matches and slightly exceeds Google's reference on every metric.
 - **Goal 2** (Dynamo parity vs NVIDIA Standalone fixed-OSL baseline): completed. Both runs use `aiperf` + locked OSL + the same SGLang version that's bundled in Dynamo's certified runtime image, so the comparison isolates the Dynamo wrapper from engine config differences. Throughput within ~6% of the baseline.
-- **Goal 3** (Dynamo KV-aware routing on shared-prefix workload): completed in [`nvfp4-kv-optimized/`](./nvfp4-kv-optimized/). At equal concurrency (conc=5), Dynamo delivers +25% throughput and -10% ITL P50 vs Standalone. Dynamo also sustains 3.2× higher concurrency on the same hardware (conc=16 vs Standalone's conc=5 ceiling).
+- **Goal 3** (Dynamo optimized): completed in [`nvfp4-kv-optimized/`](./nvfp4-kv-optimized/). KV-aware routing on shared-prefix workload (2-replica × TP=8 single-node). At equal concurrency (conc=5), Dynamo delivers +25% throughput and -10% ITL P50 vs Standalone. Dynamo also sustains 3.2× higher concurrency on the same hardware (conc=16 vs Standalone's conc=5 ceiling).
