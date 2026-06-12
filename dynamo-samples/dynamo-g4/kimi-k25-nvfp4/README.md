@@ -22,6 +22,14 @@ NVIDIA Dynamo + SGLang reference deployment for **Kimi K2.5 NVFP4** on Google Cl
 └── modelopt_fp4    (NVFP4 weights ~370 GB, bf16 KV cache, mem-fraction 0.82)
 ```
 
+## Recommended: PP=1 (single-node) for optimized latency
+
+For latency-sensitive Dynamo deployments, **prefer PP=1 (single-node TP)** when your hardware allows the model + KV cache to fit on one node — pair it with Dynamo's KV-aware routing (`--router-mode kv`) and multi-replica fan-out.
+
+This recipe uses **PP=2 across 2 nodes** only because Kimi K2.5 NVFP4 (~370 GB) doesn't fit comfortably on a single g4 node with usable KV cache. Cross-node PP is **not the recommended shape for optimized latency** — use it only when single-node fit isn't feasible.
+
+**See [`nvfp4-kv-optimized/`](./nvfp4-kv-optimized/)** (Goal 3) for the PP=1 reference on this hardware: 2 replicas × TP=8 single-node + KV-aware routing on shared-prefix workload. Single-node fit for K2.5 NVFP4 on g4 is memory-tight (`--mem-fraction-static 0.97 --disable-cuda-graph`, ~2.6 GB KV/GPU → concurrency-capped), but it isolates Dynamo's KV-routing benefit cleanly: 3.2× sustainable concurrency and -10% ITL P50 vs single-node Standalone at equal concurrency on shared-prefix workload.
+
 ## Quick start
 
 ```bash
