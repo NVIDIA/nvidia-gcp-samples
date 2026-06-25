@@ -23,40 +23,38 @@ For select demonstrations, the sample code will be contained within this reposit
 
 ## Samples
 
-### Deep Learning Inference:
- - [Triton autoscaling example with TensorRT optimization in Google Kubernetes Engine](kubernetes-engine-samples/triton_gke)
- - [BERT fine tuning, TensorRT optimization, Serve TensorRT engine through Triton in AI Platform Prediction ](ai-platform-samples/bert_on_caip)
- - [Triton Inference Server application in Google Kubernetes Engine](https://cloud.google.com/blog/products/compute/triton-inference-server-in-gke-nvidia-google-kubernetes)
- - [Triton GKE Marketplace application](https://console.cloud.google.com/marketplace/product/nvidia-ngc-public/triton-inference-server), [Blog](https://cloud.google.com/blog/products/compute/triton-inference-server-in-gke-nvidia-google-kubernetes)
- - [AlphaFold batch inference with Vertex AI Pipelines](https://github.com/GoogleCloudPlatform/vertex-ai-alphafold-inference-pipeline)
- - [Triton in Vertex AI Prediction](https://github.com/NVIDIA/nvidia-gcp-samples/blob/master/vertex-ai-samples/prediction/triton_inference.ipynb)
+Samples are organized first by use case, then by Google Cloud service, then by NVIDIA library or stack.
 
-### Machine Learning and Data Science:
- - [XGBoost with LocalCUDACluster Dask single node sample](ai-platform-samples/xgboost_single_node/gcsfs_localcuda)
- - [RAPIDS XGBoost hyperparameter optimization example](https://github.com/rapidsai/cloud-ml-examples/tree/main/gcp)
- - [XGBoost ensemble inference with Triton](https://github.com/NVIDIA/nvidia-gcp-samples/blob/master/vertex-ai-samples/prediction/xgboost_ensemble/simple_xgboost_example.ipynb)
+### Agentic
+ - Agent Platform / AIQ: [Nemotron AIQ example](agentic/agent-platform/aiq/nemotron-aiq-example)
 
-### Big Data Analytics:
- - [RAPIDS/Spark on GCP Dataproc](https://nvidia.github.io/spark-rapids/docs/get-started/getting-started-gcp.html)
- - [Churn example with Spark RAPIDS on GCP Dataproc](https://github.com/GoogleCloudPlatform/datalake-modernization-workshops/tree/main/spark-rapids-churn)
- - [TensorRT intergration with Dataflow](https://github.com/apache/beam/blob/master/sdks/python/apache_beam/ml/inference/tensorrt_inference.py)
- - [TensorRT Bert Q&A inference in GCP Dataflow](dataflow-samples/bert-qa-trt-dataflow)
- - [BigQuery analytics with Dask on GPU](https://github.com/NVIDIA/nvidia-gcp-samples/blob/master/bigquery-samples/dask-bigquery-connector/bigquery_dataproc_dask_xgboost.ipynb)
+### Inference
+ - AI Platform / Triton: [BERT fine tuning, TensorRT optimization, and Triton serving in AI Platform Prediction](inference/ai-platform/triton/bert-on-caip)
+ - Cloud Run / NIM: [LLM NIM on Google Cloud Run](inference/cloud-run/nim/llm-nim)
+ - GKE / Dynamo: [Dynamo VLLM disaggregated deployment](inference/gke/dynamo/vllm-disaggregated)
+ - GKE / Dynamo: [Dynamo G4 Kimi K2.5 reference deployments](inference/gke/dynamo/g4-kimi-k25)
+ - GKE / NIM: [LLM NIM on Google Kubernetes Engine](inference/gke/nim/llm-nim)
+ - GKE / TAO and Triton: [Building a computer vision service using NVIDIA NGC and Triton in Google Cloud](inference/gke/tao-triton/build-cv-service)
+ - GKE / Triton: [Triton autoscaling example with TensorRT optimization in Google Kubernetes Engine](inference/gke/triton/triton-gke)
+ - Agent Platform / NIM: [LLM NIM on Agent Platform Workbench](inference/agent-platform/nim/llm-nim/workbench)
+ - Agent Platform / NIM: [LLM NIM on Agent Platform Colab Enterprise](inference/agent-platform/nim/llm-nim/colab-enterprise)
+ - Agent Platform / NIM: [NeMo Retriever NIM on Agent Platform Workbench](inference/agent-platform/nim/nemo-retriever/workbench)
+ - Agent Platform / Triton: [Triton in Agent Platform Prediction](inference/agent-platform/triton/prediction/triton_inference.ipynb)
+ - Agent Platform / Triton: [XGBoost ensemble inference with Triton](inference/agent-platform/triton/prediction/xgboost_ensemble/simple_xgboost_example.ipynb)
 
-### End to End Deep Learning:
- - [Building a Computer Vision Service Using NVIDIA NGC and Triton in Google Cloud](https://info.nvidia.com/ngc-google-cloud-computer-vision-webinar.html)
- - [NVIDIA Merlin recommender system on GCP Vertex AI](https://github.com/GoogleCloudPlatform/nvidia-merlin-on-vertex-ai)
- - [AutoML Videl Edge on NVIDIA GPU](https://github.com/google/automl-video-ondevice) 
+### Training
+ - AI Platform / RAPIDS: [XGBoost with LocalCUDACluster Dask single node sample](training/ai-platform/rapids/xgboost-single-node/gcsfs_localcuda)
+ - AI Platform / RAPIDS: [Multi-node XGBoost training sample](training/ai-platform/rapids/xgboost-multi-node)
+ - Agent Platform / NeMo RL: [NeMo RL GRPO quickstart](training/agent-platform/nemo-rl/vtc-nemo-rl/nemo_rl_grpo_quickstart.ipynb)
 
-### Physical AI and Simulation:
- - [Accelerate Robot Learning with NVIDIA Isaac Lab and Newton on Google Cloud](ngc-samples/physical-ai-isaac-lab-newton)
+### Data Processing
+ - BigQuery / RAPIDS: [BigQuery analytics with Dask on GPU](data-processing/bigquery/rapids/dask-bigquery-connector/bigquery_dataproc_dask_xgboost.ipynb)
+ - Dataflow / TensorFlow: [BERT Q&A inference in Dataflow](data-processing/dataflow/tensorflow/bert-qa-tf-dataflow)
+ - Dataflow / TensorFlow: [T5 inference in Dataflow](data-processing/dataflow/tensorflow/t5-dataflow-gpu-cpu)
+ - Dataflow / TensorRT: [TensorRT BERT Q&A inference in Dataflow](data-processing/dataflow/tensorrt/bert-qa-trt-dataflow)
 
-### NIM Microservice and NeMo:
- - [LLM NIM on Google Kubernetes Engine](https://github.com/NVIDIA/nvidia-gcp-samples/blob/master/nim-samples/llm-nim/gke)
- - [LLM NIM on GCP Vertex AI Workbench](https://github.com/NVIDIA/nvidia-gcp-samples/blob/master/nim-samples/llm-nim/vertexai/workbench)
- - [LLM NIM on GCP Vertex AI Colab Enterprise](https://github.com/NVIDIA/nvidia-gcp-samples/blob/master/nim-samples/llm-nim/vertexai/colab-enterprise)
- - [LLM NIM on GCP Cloud Run](https://github.com/NVIDIA/nvidia-gcp-samples/blob/master/nim-samples/llm-nim/cloudrun)
- - [NeMo Retriever NIM on GCP Vertex AI Workbench](https://github.com/NVIDIA/nvidia-gcp-samples/blob/master/nim-samples/nemo-retriever/vertexai/workbench)
+### Physical AI
+ - Compute Engine / Isaac Lab and Newton: [Accelerate robot learning with NVIDIA Isaac Lab and Newton on Google Cloud](physical-ai/compute-engine/isaac-lab-newton)
 
 
 ## Additional Resources
@@ -76,7 +74,7 @@ See the following resources to learn more about NVIDIA NGC and GPU resources in 
 NA
 
 ## Contributions
-Contributions are welcome. Developers can contribute by opening a [pull request](https://help.github.com/en/articles/about-pull-requests) and agreeing to the terms in [CONTRIBUTING.MD](CONTRIBUTING.md).
+Contributions are welcome. Developers can contribute by opening a [pull request](https://help.github.com/en/articles/about-pull-requests) and agreeing to the terms in [CONTRIBUTING.MD](CONTRIBUTING.MD).
 
 ## License
 
@@ -89,3 +87,4 @@ See [LICENSE](LICENSE).
 - Rajan Arora (github: [roarjn](https://github.com/roarjn))
 - Ethem Can (github: [ethem-kinginthenorth](https://github.com/ethem-kinginthenorth))
 - Arun Raman (github: [arunraman](https://github.com/arunraman))
+- Juan Pablo Guerra (github: [juanpabloguerra16](https://github.com/juanpabloguerra16))
