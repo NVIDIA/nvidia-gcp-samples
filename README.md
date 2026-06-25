@@ -48,6 +48,9 @@ For select demonstrations, the sample code will be contained within this reposit
  - [NVIDIA Merlin recommender system on GCP Vertex AI](https://github.com/GoogleCloudPlatform/nvidia-merlin-on-vertex-ai)
  - [AutoML Videl Edge on NVIDIA GPU](https://github.com/google/automl-video-ondevice) 
 
+### Physical AI and Simulation:
+ - [Accelerate Robot Learning with NVIDIA Isaac Lab and Newton on Google Cloud](ngc-samples/physical-ai-isaac-lab-newton)
+
 ### NIM Microservice and NeMo:
  - [LLM NIM on Google Kubernetes Engine](https://github.com/NVIDIA/nvidia-gcp-samples/blob/master/nim-samples/llm-nim/gke)
  - [LLM NIM on GCP Vertex AI Workbench](https://github.com/NVIDIA/nvidia-gcp-samples/blob/master/nim-samples/llm-nim/vertexai/workbench)
