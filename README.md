@@ -31,11 +31,16 @@ Samples are organized first by use case, then by Google Cloud service, then by N
 ### Inference
  - Agent Platform / Triton: [BERT fine tuning, TensorRT optimization, and Triton serving in Agent Platform Prediction](inference/agent-platform/triton/bert-on-caip)
  - Cloud Run / NIM: [LLM NIM on Google Cloud Run](inference/cloud-run/nim/llm-nim)
+ - Cloud Run / NIM: [Cosmos Reason NIM on Google Cloud Run](inference/cloud-run/nim/cosmos-reason)
+ - Cloud Run / NIM: [Llama NIM on Google Cloud Run](inference/cloud-run/nim/llama)
+ - Cloud Run / NIM: [Nemotron NIM on Google Cloud Run](inference/cloud-run/nim/nemotron)
  - GKE / Dynamo: [Dynamo VLLM disaggregated deployment](inference/gke/dynamo/vllm-disaggregated)
  - GKE / Dynamo: [Dynamo G4 Kimi K2.5 reference deployments](inference/gke/dynamo/g4-kimi-k25)
  - GKE / NIM: [LLM NIM on Google Kubernetes Engine](inference/gke/nim/llm-nim)
+ - GKE / NIM: [LLM NIM on Google Kubernetes Engine with gcloud](inference/gke/nim/llm-nim/gcloud)
  - GKE / TAO and Triton: [Building a computer vision service using NVIDIA NGC and Triton in Google Cloud](inference/gke/tao-triton/build-cv-service)
  - GKE / Triton: [Triton autoscaling example with TensorRT optimization in Google Kubernetes Engine](inference/gke/triton/triton-gke)
+ - Agent Platform / NIM: [LLM NIM Python notebooks on Agent Platform](inference/agent-platform/nim/llm-nim/python)
  - Agent Platform / NIM: [LLM NIM on Agent Platform Workbench](inference/agent-platform/nim/llm-nim/workbench)
  - Agent Platform / NIM: [LLM NIM on Agent Platform Colab Enterprise](inference/agent-platform/nim/llm-nim/colab-enterprise)
  - Agent Platform / NIM: [NeMo Retriever NIM on Agent Platform Workbench](inference/agent-platform/nim/nemo-retriever/workbench)
@@ -55,6 +60,11 @@ Samples are organized first by use case, then by Google Cloud service, then by N
 
 ### Physical AI
  - Compute Engine / Isaac Lab and Newton: [Accelerate robot learning with NVIDIA Isaac Lab and Newton on Google Cloud](physical-ai/compute-engine/isaac-lab-newton)
+
+### Industry Solutions
+ - GKE / RAG: [NVIDIA RAG blueprint on Google Kubernetes Engine](industry-solutions/gke/rag)
+ - GKE / BioNeMo: [BioNeMo generative virtual screening for drug discovery on Google Kubernetes Engine](industry-solutions/gke/bionemo-drug-discovery)
+ - Compute Engine / VSS: [Video Search and Summarization blueprint on Google Compute Engine](industry-solutions/compute-engine/video-search-and-summarization)
 
 
 ## Additional Resources

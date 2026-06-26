@@ -35,7 +35,7 @@ Finally, NREM NIM will be capable of performing inferences both locally within t
 ### 1. Create a Vertex AI Workbench Instance
 Create a new Vertex AI Workbench instance and select `ADVANCED OPTIONS`. Choose NVIDIA GPUs (e.g. L4 for G2 machine series) and recommended [Disk Space](https://docs.nvidia.com/nim/nemo-retriever/text-embedding/latest/support-matrix.html) for specific NREM NIM.
 
-[<img src="imgs/vertexai_01.png" width="750"/>](HighLevelArch)
+<img src="imgs/vertexai_01.png" width="750"/>
 
 ### 2. Run NREM NIM on JupyterLab Notebook
 `OPEN JUPYTERLAB` of the instance, and install required packages per `requirements.txt`. 
@@ -64,7 +64,7 @@ here: https://docs.nvidia.com/ai-foundation-models-community-license.pdf.
 ### 3. Inference in Online prediction
 After deploying NREM NIM container to endpoint, check Vertex AI `Model Registry` and `Online prediction` for model/endpoint version details and event logs.
 
-[<img src="imgs/vertexai_02.png" width="900"/>](HighLevelArch)
+<img src="imgs/vertexai_02.png" width="900"/>
 
 Perform endpoint inference using the OpenAI Python API or CLI.
 

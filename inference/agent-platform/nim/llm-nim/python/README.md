@@ -1,20 +1,20 @@
-# NVIDIA NIM on GCP Vertex AI
+# NVIDIA NIM on Google Cloud Agent Platform
 
 **NVIDIA NIM** is a set of microservices designed to accelerate the deployment of generative AI models across the cloud, data center, and workstations. NIMs are categorized by model family and a per model basis. Leveraging NVIDIA’s GPU acceleration on Google Cloud Platform, NIM offers an efficient and scalable path to inference with unparalleled performance.
 
-This repository demonstrates [llama3-8b-instruct NIM](https://build.nvidia.com/meta/llama3-8b) deploy and inference on **GCP Vertex AI** with NVIDIA GPUs.
+This repository demonstrates [llama3-8b-instruct NIM](https://build.nvidia.com/meta/llama3-8b) deploy and inference on **Google Cloud Agent Platform** with NVIDIA GPUs.
 
 ## Prerequisites
 * [NGC API KEY](https://org.ngc.nvidia.com/setup/personal-keys)
 * [NGC CLI](https://org.ngc.nvidia.com/setup/installers/cli)
-* [Vertex AI Workbench](https://cloud.google.com/vertex-ai/docs/workbench/introduction)
+* [Agent Platform Workbench](https://cloud.google.com/vertex-ai/docs/workbench/introduction)
 * [gcloud CLI](https://cloud.google.com/sdk/docs/install)
 
-## Run NIM on Vertex AI Workbench Instance
+## Run NIM on Agent Platform Workbench Instance
 
-To deploy NIM on Vertex AI, start by obtaining the required credentials and completing the prerequisite setup. 
+To deploy NIM on Agent Platform, start by obtaining the required credentials and completing the prerequisite setup. 
 
-Next, create a Vertex AI Workbench instance with GPU support.
+Next, create a Agent Platform Workbench instance with GPU support.
 
 Once your instance is ready, follow the instructions provided in the Jupyter notebook to complete the deployment process. 
 
@@ -23,15 +23,15 @@ The steps are outlined below:
 * Pull NVIDIA NIM container from NGC.
 * Push NVIDIA NIM container to Artifact Registry.
 * Run NIM container to make inference within interface.
-* Upload NIM container as a Vertex AI Model resource.
-* Create a Vertex AI Endpoint resource.
+* Upload NIM container as a Agent Platform Model resource.
+* Create a Agent Platform Endpoint resource.
 * Deploy the Model resource to the Endpoint resource.
 * Generate prediction responses from Endpoint resource.
 
-Finally, NIM will be capable of performing inferences both locally within the notebook interface and through the Vertex AI endpoint, which can be accessed via Vertex AI `Model Registry` and `Online prediction`.
+Finally, NIM will be capable of performing inferences both locally within the notebook interface and through the Agent Platform endpoint, which can be accessed via Agent Platform `Model Registry` and `Online prediction`.
 
-### 1. Create a Vertex AI Workbench Instance
-Create a new Vertex AI Workbench instance and select `ADVANCED OPTIONS`. Choose NVIDIA GPUs (e.g. L4 for G2 machine series) and recommended [Disk Space](https://docs.nvidia.com/nim/large-language-models/latest/support-matrix.html) for specific NIM.
+### 1. Create a Agent Platform Workbench Instance
+Create a new Agent Platform Workbench instance and select `ADVANCED OPTIONS`. Choose NVIDIA GPUs (e.g. L4 for G2 machine series) and recommended [Disk Space](https://docs.nvidia.com/nim/large-language-models/latest/support-matrix.html) for specific NIM.
 
 Please note NIM supports pre-built [TensorRT-LLM](https://docs.nvidia.com/tensorrt-llm/index.html) profile on H200, H100, A100 GPU types, Just-In-Time local built TensorRT-LLM profile and vLLM profile on all other GPU types. More details please check [Model Profiles](https://docs.nvidia.com/nim/large-language-models/latest/profiles.html#model-profiles).
 
@@ -77,7 +77,7 @@ For GPU availability in Regions and Zones, please refer to Guide [here](https://
 
 #### We recommend starting with TensorRT-LLM solution for its superior performance optimizations in LLM inference.
 
-Run `nim-vertexai.ipynb` for vLLM, or `nim-vertexai-trtllm.ipynb` for TensorRT-LLM Python jupyter notebook, which provides step-to-step guidance on how to deploy and inference the NIM container within notebook interface or via Vertex AI endpoint resource. 
+Run `nim-vertexai.ipynb` for vLLM, or `nim-vertexai-trtllm.ipynb` for TensorRT-LLM Python jupyter notebook, which provides step-to-step guidance on how to deploy and inference the NIM container within notebook interface or via Agent Platform endpoint resource. 
 
 If NIM container has been successfully launched, you will see below output in cell or deployment log:
 
@@ -103,7 +103,7 @@ A copy of the Llama 3 license can be found under /opt/nim/MODEL_LICENSE.
 ```
 
 ### 3. Inference in Online prediction
-After deploying NIM container to endpoint, check Vertex AI `Model Registry` and `Online prediction` for model/endpoint version details and event logs.
+After deploying NIM container to endpoint, check Agent Platform `Model Registry` and `Online prediction` for model/endpoint version details and event logs.
 
 <img src="imgs/vertexai_02.png" width="750"/>
 

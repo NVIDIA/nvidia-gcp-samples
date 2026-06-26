@@ -43,7 +43,7 @@ The repo provisions the below infrastructure and software resources:
 - Kubernetes secrets
 - Helm chart deploy of llama3-8b-instruct NIM
 
-[<img src="images/1.arch.png" width="750"/>](HighLevelArch)
+<img src="images/1.arch.png" width="750"/>
 
 ### Prerequisites
 
@@ -58,8 +58,8 @@ The repo provisions the below infrastructure and software resources:
 1. Clone this repo
 
 ```shell
-git clone https://github.com/NVIDIA/nim-deploy
-cd nim-deploy/cloud-service-providers/google-cloud/gke
+git clone https://github.com/NVIDIA/nvidia-gcp-samples
+cd nvidia-gcp-samples/inference/gke/nim/llm-nim
 ```
 
 2. Update common variables in `infra/1-bootstrap/terraform.auto.tfvars`
@@ -160,7 +160,7 @@ By default the llama3-8b NIM is setup. If a different NIM is needed, follow thes
 helm uninstall my-nim -n nim
 ```
 
-Update [custom-values.yaml](./infra/3-config/helm/custom-values.yaml) file
+Update `infra/3-config/helm/custom-values.yaml`.
 
   | Variable | Description | New value |
   |---|---|---|
@@ -172,9 +172,14 @@ Update [custom-values.yaml](./infra/3-config/helm/custom-values.yaml) file
 ```shell
 export NGC_API_KEY=<Your API KEY>
 
-helm --namespace nim install my-nim ../../../helm/nim-llm/ \
--f ./infra/3-config/helm/custom-values.yaml \
---set model.ngcAPIKey=$NGC_API_KEY
+helm --namespace nim install my-nim \
+    --repo https://helm.ngc.nvidia.com/nim \
+    --username='$oauthtoken' \
+    --password=$NGC_API_KEY \
+    nim-llm \
+    --version 1.3.0 \
+    -f ./infra/3-config/helm/custom-values.yaml \
+    --set model.ngcAPIKey=$NGC_API_KEY
 ```
 
 4.Port forward to local at 8000 (change as needed) and update in the curl command as well.
@@ -222,7 +227,7 @@ curl -X 'POST' \
   "top_p": 1,
   "n": 1,
   "stream": false,
-  "stop": "\n",
+  "stop": "",
   "frequency_penalty": 0.0
 }'
 ```
