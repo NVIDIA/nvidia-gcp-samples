@@ -95,15 +95,15 @@ resource "kubernetes_secret" "ngc_api" {
 
 resource "kubernetes_service_account" "ngc_gcs_ksa" {
   metadata {
-    name = "nim-on-gke-sa"
+    name      = "nim-on-gke-sa"
     namespace = "nim"
   }
   depends_on = [kubernetes_namespace.nim]
 }
 
 resource "google_storage_bucket" "ngc_gcs_cache" {
-  project       = data.google_project.current.name
-  name          = "${data.google_project.current.name}-ngc-gcs-cache"
+  project       = data.google_project.current.project_id
+  name          = "${lower(data.google_project.current.name)}-ngc-gcs-cache"
   location      = "US"
   force_destroy = true
 
@@ -112,7 +112,7 @@ resource "google_storage_bucket" "ngc_gcs_cache" {
 
 resource "google_storage_bucket_iam_binding" "ngc_gcs_ksa_binding" {
   bucket = google_storage_bucket.ngc_gcs_cache.name
-  role = "roles/storage.objectUser"
+  role   = "roles/storage.objectUser"
   members = [
     "principal://iam.googleapis.com/projects/${data.google_project.current.number}/locations/global/workloadIdentityPools/${data.google_project.current.project_id}.svc.id.goog/subject/ns/${kubernetes_service_account.ngc_gcs_ksa.metadata[0].namespace}/sa/${kubernetes_service_account.ngc_gcs_ksa.metadata[0].name}",
   ]
@@ -120,10 +120,10 @@ resource "google_storage_bucket_iam_binding" "ngc_gcs_ksa_binding" {
 }
 
 resource "helm_release" "ngc_to_gcs_transfer" {
-  name       = "ngc-to-gcs-transfer"
-  namespace  = "nim"
-  repository = "nim-llm"
-  chart      = "./helm/ngc-cache"
+  name          = "ngc-to-gcs-transfer"
+  namespace     = "nim"
+  repository    = "nim-llm"
+  chart         = "./helm/ngc-cache"
   wait_for_jobs = true
 
   values = [
@@ -132,12 +132,12 @@ resource "helm_release" "ngc_to_gcs_transfer" {
   ]
 
   set {
-    name = "extraVolumes.cache-volume.csi.volumeAttributes.bucketName"
+    name  = "extraVolumes.cache-volume.csi.volumeAttributes.bucketName"
     value = google_storage_bucket.ngc_gcs_cache.name
   }
 
   set {
-    name = "persistence.csi.volumeHandle"
+    name  = "persistence.csi.volumeHandle"
     value = google_storage_bucket.ngc_gcs_cache.name
   }
 
@@ -152,7 +152,7 @@ resource "helm_release" "ngc_to_gcs_transfer" {
   }
 
   set {
-    name = "serviceAccount.name"
+    name  = "serviceAccount.name"
     value = kubernetes_service_account.ngc_gcs_ksa.metadata[0].name
   }
 
@@ -175,15 +175,19 @@ resource "helm_release" "ngc_to_gcs_transfer" {
 resource "helm_release" "my_nim" {
   name       = "my-nim"
   namespace  = "nim"
-  repository = "nim-llm"
-  chart      = "../../../../../helm/nim-llm/"
+  repository = "https://helm.ngc.nvidia.com/nim"
+  chart      = "nim-llm"
+  version    = "1.3.0"
+
+  repository_username = "$oauthtoken"
+  repository_password = var.ngc_api_key
 
   values = [
     file("./helm/custom-values.yaml")
   ]
 
   set {
-    name = "csi.volumeAttributes.bucketName"
+    name  = "csi.volumeAttributes.bucketName"
     value = google_storage_bucket.ngc_gcs_cache.name
   }
 
@@ -198,7 +202,7 @@ resource "helm_release" "my_nim" {
   }
 
   set {
-    name = "serviceAccount.name"
+    name  = "serviceAccount.name"
     value = kubernetes_service_account.ngc_gcs_ksa.metadata[0].name
   }
 
@@ -216,7 +220,6 @@ resource "helm_release" "my_nim" {
 
   timeout = 900
   wait    = true
-
 }
 
 # resource "kubernetes_service" "my_nim_service" {
