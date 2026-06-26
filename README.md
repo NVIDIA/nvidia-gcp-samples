@@ -29,7 +29,7 @@ Samples are organized first by use case, then by Google Cloud service, then by N
  - Agent Platform / AIQ: [Nemotron AIQ example](agentic/agent-platform/aiq/nemotron-aiq-example)
 
 ### Inference
- - AI Platform / Triton: [BERT fine tuning, TensorRT optimization, and Triton serving in AI Platform Prediction](inference/ai-platform/triton/bert-on-caip)
+ - Agent Platform / Triton: [BERT fine tuning, TensorRT optimization, and Triton serving in Agent Platform Prediction](inference/agent-platform/triton/bert-on-caip)
  - Cloud Run / NIM: [LLM NIM on Google Cloud Run](inference/cloud-run/nim/llm-nim)
  - GKE / Dynamo: [Dynamo VLLM disaggregated deployment](inference/gke/dynamo/vllm-disaggregated)
  - GKE / Dynamo: [Dynamo G4 Kimi K2.5 reference deployments](inference/gke/dynamo/g4-kimi-k25)
@@ -43,8 +43,8 @@ Samples are organized first by use case, then by Google Cloud service, then by N
  - Agent Platform / Triton: [XGBoost ensemble inference with Triton](inference/agent-platform/triton/prediction/xgboost_ensemble/simple_xgboost_example.ipynb)
 
 ### Training
- - AI Platform / RAPIDS: [XGBoost with LocalCUDACluster Dask single node sample](training/ai-platform/rapids/xgboost-single-node/gcsfs_localcuda)
- - AI Platform / RAPIDS: [Multi-node XGBoost training sample](training/ai-platform/rapids/xgboost-multi-node)
+ - Agent Platform / RAPIDS: [XGBoost with LocalCUDACluster Dask single node sample](training/agent-platform/rapids/xgboost-single-node/gcsfs_localcuda)
+ - Agent Platform / RAPIDS: [Multi-node XGBoost training sample](training/agent-platform/rapids/xgboost-multi-node)
  - Agent Platform / NeMo RL: [NeMo RL GRPO quickstart](training/agent-platform/nemo-rl/vtc-nemo-rl/nemo_rl_grpo_quickstart.ipynb)
 
 ### Data Processing
