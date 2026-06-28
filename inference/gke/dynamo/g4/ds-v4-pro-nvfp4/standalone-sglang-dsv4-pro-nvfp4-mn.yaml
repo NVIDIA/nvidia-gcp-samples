@@ -1,0 +1,110 @@
+# DeepSeek V4 Pro NVFP4 — STANDALONE sglang MULTINODE (NO Dynamo), TP=8 PP=2, 2 nodes × 8 GPUs
+# Single-node TP=8 OOMs (~94 GiB weights > 95 GiB usable). PP=2 → ~56 GiB/GPU resident (fits).
+# Image: lmsysorg/sglang:v0.5.14-cu129 (sglang 0.5.14, matched sgl-kernel + flashinfer 0.6.12, reworked loader).
+#
+# NETWORK: hostNetwork + dual-NIC (eth0,eth1). First pod-network attempt loaded all 64 shards
+# then HUNG at the post-load cross-PP global barrier (GPU 0%, threads parked in futex_wait) — a
+# host-side cross-node wait. The dynamo PP=2 runs cleared this exact stage with hostNetwork+eth0,eth1,
+# so we replicate that. NCCL_DEBUG=INFO captures ring/channel setup if it stalls again.
+apiVersion: v1
+kind: Service
+metadata:
+  name: sglang-dsv4-mn
+  namespace: default
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true          # pod-0 DNS resolves before readiness (dist leader)
+  selector: { app: sglang-dsv4-mn }
+  ports:
+    - { name: dist, port: 5000 }
+    - { name: http, port: 30000 }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: sglang-dsv4-mn
+  namespace: default
+spec:
+  serviceName: sglang-dsv4-mn
+  replicas: 2
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels: { app: sglang-dsv4-mn }
+  template:
+    metadata:
+      labels: { app: sglang-dsv4-mn }
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-rtx-pro-6000
+      affinity:
+        podAntiAffinity:                   # force the 2 pods onto different nodes
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels: { app: sglang-dsv4-mn }
+              topologyKey: kubernetes.io/hostname
+      tolerations:
+        - { key: nvidia.com/gpu, operator: Exists, effect: NoSchedule }
+        - { key: cloud.google.com/gke-spot, operator: Exists, effect: NoSchedule }
+        - { key: cloud.google.com/gke-preemptible, operator: Exists, effect: NoSchedule }
+      containers:
+        - name: sglang
+          image: lmsysorg/sglang:v0.5.14-cu129
+          securityContext: { runAsUser: 0 }
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              # hostNetwork => $HOSTNAME is the NODE name, not the pod. Use downward-API POD_NAME.
+              RANK=${POD_NAME##*-}
+              MODEL_DIR=/model-cache/.model-express/cache/models--nvidia--DeepSeek-V4-Pro-NVFP4/snapshots/latest
+              echo "sglang MN node-rank=$RANK pod=$POD_NAME node=$HOSTNAME (hostNetwork dual-NIC)"
+              # MEMORY: PP=2 = ~56 GiB weights/GPU. Post-load swizzle needs a ~32 GiB transient
+              # (one MoE layer's 384 experts -> BF16). It OOM'd ONLY because mem-fraction 0.8 made the
+              # KV pool eat the headroom. cpu-offload is NOT an option: sglang's offloader crashes on
+              # the tied NVFP4 swizzled blockscale tensors (functional_call multiple-values bug).
+              # Fix: NO offload + small KV pool (mem-fraction 0.62 -> ~39 GiB free) + expandable_segments.
+              exec python3 -m sglang.launch_server \
+                --model-path "$MODEL_DIR" \
+                --served-model-name nvidia/DeepSeek-V4-Pro-NVFP4 \
+                --tp-size 8 --pp-size 2 \
+                --nnodes 2 --node-rank "$RANK" \
+                --dist-init-addr sglang-dsv4-mn-0.sglang-dsv4-mn.default.svc.cluster.local:5000 \
+                --moe-runner-backend flashinfer_cutlass \
+                --fp4-gemm-backend flashinfer_cutlass \
+                --trust-remote-code \
+                --mem-fraction-static 0.62 \
+                --context-length 8192 \
+                --max-running-requests 8 \
+                --chunked-prefill-size 2048 \
+                --disable-cuda-graph \
+                --disable-radix-cache \
+                --disable-custom-all-reduce \
+                --watchdog-timeout 1800 \
+                --host 0.0.0.0 --port 30000
+          resources:
+            limits:   { nvidia.com/gpu: "8" }
+            requests: { nvidia.com/gpu: "8" }
+          env:
+            - name: POD_NAME
+              valueFrom: { fieldRef: { fieldPath: metadata.name } }
+            - { name: HF_HOME, value: /model-cache }
+            - { name: NCCL_IB_DISABLE, value: "1" }
+            - { name: NCCL_SOCKET_IFNAME, value: "eth0,eth1" }
+            - { name: NCCL_P2P_LEVEL, value: SYS }
+            - { name: NCCL_DEBUG, value: "WARN" }
+            - { name: GLOO_SOCKET_IFNAME, value: "eth0" }
+            - { name: PYTORCH_CUDA_ALLOC_CONF, value: "expandable_segments:True" }
+            - { name: TRITON_CACHE_DIR, value: /model-cache/.triton-cache }
+            - { name: SGLANG_SET_CPU_AFFINITY, value: "1" }
+          ports:                                  # hostNetwork binds node ports directly; no hostPort (it blocks rescheduling)
+            - { containerPort: 30000 }
+            - { containerPort: 5000 }
+          volumeMounts:
+            - { mountPath: /model-cache, name: model-cache }
+            - { mountPath: /dev/shm, name: dshm }
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim: { claimName: model-cache }
+        - name: dshm
+          emptyDir: { medium: Memory, sizeLimit: 80Gi }

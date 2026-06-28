@@ -1,0 +1,127 @@
+# DeepSeek V4 Pro NVFP4 — Dynamo DGD on RTX Pro 6000 (SM120), SGLang backend
+# APPROACH: community sglang image (has the working DSV4 NVFP4 engine + SM120 cutlass MoE) +
+#           Dynamo wheel installed at startup (--no-deps so it does NOT clobber sglang 0.5.14).
+# Image:    lmsysorg/sglang:v0.5.14-cu129  (sglang 0.5.14 = PR #25820 + later DSV4 PRs;
+#           flashinfer 0.6.12 ships SM120 MoE kernels: fused_moe/cute_dsl/blackwell_sm12x)
+# MoE:      flashinfer_cutlass (SM120). flashinfer_trtllm_routed is SM100/B200-only -> fails on SM120.
+# Topology: TP=8 PP=2, 2 nodes x 8 GPUs (Grove gang). No cpu-offload (broken for NVFP4); small KV pool.
+# Model:    already staged in the model-cache PVC -> ModelExpress omitted.
+# Bench rule: --enable-metrics / --log-level info intentionally omitted (per-step hot-loop tax).
+---
+apiVersion: nvidia.com/v1alpha1
+kind: DynamoGraphDeployment
+metadata:
+  name: dsv4-sglang-v0514
+  namespace: default
+spec:
+  services:
+
+    Frontend:
+      componentType: frontend
+      replicas: 1
+      # Memory request/limit -> Burstable QoS so the kubelet does NOT evict it first under
+      # node memory pressure (best-effort frontend was getting Evicted (137) -> churned the gang).
+      resources:
+        requests: { cpu: "1", memory: 4Gi }
+        limits:   { cpu: "4", memory: 12Gi }
+      extraPodSpec:
+        mainContainer:
+          image: lmsysorg/sglang:v0.5.14-cu129
+          securityContext: { runAsUser: 0 }
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -e
+              for i in 1 2 3; do
+                pip install --no-deps --quiet ai-dynamo ai-dynamo-runtime --extra-index-url https://pypi.nvidia.com && break || sleep 5
+              done
+              pip install --quiet blake3 accelerate || true
+              exec python3 -m dynamo.frontend --router-mode kv --no-kv-events
+          env:
+            - name: POD_UID
+              valueFrom: { fieldRef: { fieldPath: metadata.uid } }
+            - { name: HF_HOME, value: /model-cache }
+            - { name: HF_HUB_CACHE, value: /model-cache/.model-express/cache }
+          volumeMounts:
+            - { mountPath: /model-cache, name: model-cache }
+        volumes:
+          - name: model-cache
+            persistentVolumeClaim: { claimName: model-cache }
+
+    agg:
+      componentType: worker
+      replicas: 1
+      # TP=8 PP=2 across 2 nodes (8 GPUs each). Grove places them as a gang; the operator
+      # injects the cross-node dist coordination (no manual --nnodes/--node-rank needed).
+      multinode:
+        nodeCount: 2
+      resources:
+        limits:   { gpu: "8" }
+        requests: { gpu: "8" }
+      sharedMemory:
+        size: 80Gi
+      extraPodSpec:
+        hostNetwork: true
+        dnsPolicy: ClusterFirstWithHostNet
+        nodeSelector:
+          cloud.google.com/gke-accelerator: nvidia-rtx-pro-6000
+        tolerations:
+          - { key: nvidia.com/gpu, operator: Exists, effect: NoSchedule }
+          - { key: cloud.google.com/gke-spot, operator: Exists, effect: NoSchedule }
+          - { key: cloud.google.com/gke-preemptible, operator: Exists, effect: NoSchedule }
+        mainContainer:
+          image: lmsysorg/sglang:v0.5.14-cu129
+          workingDir: /workspace
+          securityContext: { runAsUser: 0 }
+          startupProbe:
+            httpGet: { path: /live, port: 9090 }
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 120   # ~60 min: wheel install + cross-node load + FP4 autotune
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -e
+              MODEL_DIR=/model-cache/.model-express/cache/models--nvidia--DeepSeek-V4-Pro-NVFP4/snapshots/latest
+              # Dynamo wheel on top of the community sglang image. --no-deps keeps sglang 0.5.14 intact.
+              for i in 1 2 3; do
+                pip install --no-deps --quiet ai-dynamo ai-dynamo-runtime --extra-index-url https://pypi.nvidia.com && break || sleep 5
+              done
+              pip install --quiet blake3 accelerate || true
+              echo "sglang=$(python3 -c 'import sglang;print(sglang.__version__)') ai-dynamo=$(pip show ai-dynamo 2>/dev/null | awk '/^Version/{print $2}')"
+              exec python3 -m dynamo.sglang \
+                --model-path "$MODEL_DIR" \
+                --served-model-name nvidia/DeepSeek-V4-Pro-NVFP4 \
+                --trust-remote-code \
+                --tensor-parallel-size 8 \
+                --pipeline-parallel-size 2 \
+                --moe-runner-backend flashinfer_cutlass \
+                --fp4-gemm-backend flashinfer_cutlass \
+                --mem-fraction-static 0.62 \
+                --context-length 8192 \
+                --max-running-requests 8 \
+                --chunked-prefill-size 2048 \
+                --disable-shared-experts-fusion \
+                --disable-custom-all-reduce \
+                --disable-radix-cache \
+                --disable-cuda-graph \
+                --host 0.0.0.0 \
+                --watchdog-timeout 3600
+          env:
+            - name: POD_UID
+              valueFrom: { fieldRef: { fieldPath: metadata.uid } }
+            - { name: HF_HOME, value: /model-cache }
+            - { name: HF_HUB_CACHE, value: /model-cache/.model-express/cache }
+            - { name: TRITON_CACHE_DIR, value: /model-cache/.triton-cache }
+            - { name: PYTORCH_CUDA_ALLOC_CONF, value: "expandable_segments:True" }
+            - { name: FLASHINFER_DISABLE_VERSION_CHECK, value: "1" }
+            - { name: SGLANG_SET_CPU_AFFINITY, value: "1" }
+            # cross-node NCCL: no IB on RTX Pro 6000 -> TCP over eth0+eth1
+            - { name: NCCL_IB_DISABLE, value: "1" }
+            - { name: NCCL_SOCKET_IFNAME, value: "eth0,eth1" }
+            - { name: NCCL_P2P_LEVEL, value: SYS }
+          volumeMounts:
+            - { mountPath: /model-cache, name: model-cache }
+        volumes:
+          - name: model-cache
+            persistentVolumeClaim: { claimName: model-cache }
