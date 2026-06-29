@@ -3,7 +3,7 @@
 #           Dynamo wheel installed at startup (--no-deps so it does NOT clobber sglang 0.5.14).
 # Image:    lmsysorg/sglang:v0.5.14-cu129  (sglang 0.5.14 = PR #25820 + later DSV4 PRs;
 #           flashinfer 0.6.12 ships SM120 MoE kernels: fused_moe/cute_dsl/blackwell_sm12x)
-# MoE:      flashinfer_cutlass (SM120). flashinfer_trtllm_routed is SM100/B200-only -> fails on SM120.
+# MoE:      flashinfer_cutlass (SM120). flashinfer_trtllm_routed is SM100-only (datacenter Blackwell) -> fails on SM120.
 # Topology: TP=8 PP=2, 2 nodes x 8 GPUs (Grove gang). No cpu-offload (broken for NVFP4); small KV pool.
 # Model:    already staged in the model-cache PVC -> ModelExpress omitted.
 # Bench rule: --enable-metrics / --log-level info intentionally omitted (per-step hot-loop tax).
@@ -19,8 +19,6 @@ spec:
     Frontend:
       componentType: frontend
       replicas: 1
-      # Memory request/limit -> Burstable QoS so the kubelet does NOT evict it first under
-      # node memory pressure (best-effort frontend was getting Evicted (137) -> churned the gang).
       resources:
         requests: { cpu: "1", memory: 4Gi }
         limits:   { cpu: "4", memory: 12Gi }
@@ -51,8 +49,6 @@ spec:
     agg:
       componentType: worker
       replicas: 1
-      # TP=8 PP=2 across 2 nodes (8 GPUs each). Grove places them as a gang; the operator
-      # injects the cross-node dist coordination (no manual --nnodes/--node-rank needed).
       multinode:
         nodeCount: 2
       resources:
@@ -77,13 +73,12 @@ spec:
             httpGet: { path: /live, port: 9090 }
             periodSeconds: 30
             timeoutSeconds: 5
-            failureThreshold: 120   # ~60 min: wheel install + cross-node load + FP4 autotune
+            failureThreshold: 120
           command: ["/bin/bash", "-c"]
           args:
             - |
               set -e
               MODEL_DIR=/model-cache/.model-express/cache/models--nvidia--DeepSeek-V4-Pro-NVFP4/snapshots/latest
-              # Dynamo wheel on top of the community sglang image. --no-deps keeps sglang 0.5.14 intact.
               for i in 1 2 3; do
                 pip install --no-deps --quiet ai-dynamo ai-dynamo-runtime --extra-index-url https://pypi.nvidia.com && break || sleep 5
               done
@@ -115,7 +110,6 @@ spec:
             - { name: PYTORCH_CUDA_ALLOC_CONF, value: "expandable_segments:True" }
             - { name: FLASHINFER_DISABLE_VERSION_CHECK, value: "1" }
             - { name: SGLANG_SET_CPU_AFFINITY, value: "1" }
-            # cross-node NCCL: no IB on RTX Pro 6000 -> TCP over eth0+eth1
             - { name: NCCL_IB_DISABLE, value: "1" }
             - { name: NCCL_SOCKET_IFNAME, value: "eth0,eth1" }
             - { name: NCCL_P2P_LEVEL, value: SYS }

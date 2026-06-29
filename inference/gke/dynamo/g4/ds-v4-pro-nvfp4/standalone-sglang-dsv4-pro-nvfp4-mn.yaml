@@ -13,7 +13,7 @@ metadata:
   namespace: default
 spec:
   clusterIP: None
-  publishNotReadyAddresses: true          # pod-0 DNS resolves before readiness (dist leader)
+  publishNotReadyAddresses: true
   selector: { app: sglang-dsv4-mn }
   ports:
     - { name: dist, port: 5000 }
@@ -39,7 +39,7 @@ spec:
       nodeSelector:
         cloud.google.com/gke-accelerator: nvidia-rtx-pro-6000
       affinity:
-        podAntiAffinity:                   # force the 2 pods onto different nodes
+        podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             - labelSelector:
                 matchLabels: { app: sglang-dsv4-mn }
@@ -55,15 +55,9 @@ spec:
           command: ["/bin/bash", "-c"]
           args:
             - |
-              # hostNetwork => $HOSTNAME is the NODE name, not the pod. Use downward-API POD_NAME.
               RANK=${POD_NAME##*-}
               MODEL_DIR=/model-cache/.model-express/cache/models--nvidia--DeepSeek-V4-Pro-NVFP4/snapshots/latest
               echo "sglang MN node-rank=$RANK pod=$POD_NAME node=$HOSTNAME (hostNetwork dual-NIC)"
-              # MEMORY: PP=2 = ~56 GiB weights/GPU. Post-load swizzle needs a ~32 GiB transient
-              # (one MoE layer's 384 experts -> BF16). It OOM'd ONLY because mem-fraction 0.8 made the
-              # KV pool eat the headroom. cpu-offload is NOT an option: sglang's offloader crashes on
-              # the tied NVFP4 swizzled blockscale tensors (functional_call multiple-values bug).
-              # Fix: NO offload + small KV pool (mem-fraction 0.62 -> ~39 GiB free) + expandable_segments.
               exec python3 -m sglang.launch_server \
                 --model-path "$MODEL_DIR" \
                 --served-model-name nvidia/DeepSeek-V4-Pro-NVFP4 \
@@ -96,7 +90,7 @@ spec:
             - { name: PYTORCH_CUDA_ALLOC_CONF, value: "expandable_segments:True" }
             - { name: TRITON_CACHE_DIR, value: /model-cache/.triton-cache }
             - { name: SGLANG_SET_CPU_AFFINITY, value: "1" }
-          ports:                                  # hostNetwork binds node ports directly; no hostPort (it blocks rescheduling)
+          ports:
             - { containerPort: 30000 }
             - { containerPort: 5000 }
           volumeMounts:

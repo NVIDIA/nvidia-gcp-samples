@@ -34,8 +34,6 @@ Workload: random, 16 prompts, ISL 128 / OSL 64, rate 4 req/s. First (non-warmed)
 ## A) Standalone SGLang (no Dynamo)
 
 ```bash
-cd dynamo-g4/ds-v4-pro-nvfp4
-
 # 1. Deploy (StatefulSet: leader + worker on 2 nodes)
 kubectl apply -f standalone-sglang-dsv4-pro-nvfp4-mn.yaml
 
@@ -69,8 +67,6 @@ kubectl delete -f standalone-sglang-dsv4-pro-nvfp4-mn.yaml
 The DGD worker and frontend run the **community SGLang image** and install the Dynamo wheel at startup with `pip install --no-deps ai-dynamo …` (which preserves the image's SGLang 0.5.14), then launch `dynamo.sglang` / `dynamo.frontend`. This is handled within the manifest; apply it directly.
 
 ```bash
-cd dynamo-g4/ds-v4-pro-nvfp4
-
 # 1. Deploy (the operator schedules a Grove gang: agg-ldr + agg-wkr on 2 GPU nodes, frontend on a CPU node)
 kubectl apply -f dgd-sglang-dsv4-pro-nvfp4-v0514.yaml
 
