@@ -1,11 +1,6 @@
 # DeepSeek V4 Pro NVFP4 — STANDALONE sglang MULTINODE (NO Dynamo), TP=8 PP=2, 2 nodes × 8 GPUs
 # Single-node TP=8 OOMs (~94 GiB weights > 95 GiB usable). PP=2 → ~56 GiB/GPU resident (fits).
 # Image: lmsysorg/sglang:v0.5.14-cu129 (sglang 0.5.14, matched sgl-kernel + flashinfer 0.6.12, reworked loader).
-#
-# NETWORK: hostNetwork + dual-NIC (eth0,eth1). First pod-network attempt loaded all 64 shards
-# then HUNG at the post-load cross-PP global barrier (GPU 0%, threads parked in futex_wait) — a
-# host-side cross-node wait. The dynamo PP=2 runs cleared this exact stage with hostNetwork+eth0,eth1,
-# so we replicate that. NCCL_DEBUG=INFO captures ring/channel setup if it stalls again.
 apiVersion: v1
 kind: Service
 metadata:
