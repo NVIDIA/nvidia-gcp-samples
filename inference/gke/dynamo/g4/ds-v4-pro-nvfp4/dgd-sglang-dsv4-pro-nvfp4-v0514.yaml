@@ -104,7 +104,6 @@ spec:
                 --disable-shared-experts-fusion \
                 --disable-custom-all-reduce \
                 --disable-radix-cache \
-                --disable-cuda-graph \
                 --host 0.0.0.0 \
                 --watchdog-timeout 3600
           env:

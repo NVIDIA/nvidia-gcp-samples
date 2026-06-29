@@ -12,15 +12,15 @@ Serve `nvidia/DeepSeek-V4-Pro-NVFP4` (910B, mixed FP8 + NVFP4 experts) on **RTX 
 
 ## Results — sample workload
 
-Workload: random, 16 prompts, ISL 128 / OSL 64, rate 4 req/s.
+Workload: random, 16 prompts, ISL 128 / OSL 64, rate 4 req/s. First (non-warmed) run; CUDA graphs enabled.
 
-| Metric | Standalone | Dynamo | Dynamo (warmed up) |
+| Metric | Standalone | Dynamo | Δ (Dynamo vs Standalone) |
 |---|---|---|---|
-| Output tok/s | 34.79 | 33.10 | 40 – 43 |
-| Median TTFT | 12.8 s | 9.5 s | 6.1 – 7.5 s |
-| Median TPOT / ITL | 144 / 129 ms | 144 / 131 ms | 150 / 128 ms |
+| Output tok/s | 56.6 | 54.7 | −3% |
+| Median TTFT | 4.7 s | 5.0 s | +6% |
+| Median TPOT / ITL | 106 / 80 ms | 107 / 80 ms | +1% / ~0% |
 
-**Decode latency (TPOT/ITL) is identical** across all (same engine + SM120 CUTLASS kernels — Dynamo adds no per-token cost). Dynamo starts within ~5% of standalone throughput and, **once warmed up (radix + autotune cache), reaches 40–43 tok/s with ~6 s TTFT** — Dynamo's caching/orchestration delivering higher throughput and lower first-token latency. The absolute numbers are modest by design (PP=2 over PCIe, no InfiniBand, CUDA graphs disabled) — a functional validation, not a performance-tuned result. Full detail: `bench-results/RESULTS.md`.
+**Decode latency (TPOT/ITL) is effectively identical** (same engine + SM120 CUTLASS kernels with CUDA graphs — Dynamo adds no per-token cost; ITL ~80 ms either way). Dynamo runs within ~3% of standalone throughput and ~6% on first-token latency — the cost of its frontend/router orchestration. The absolute numbers reflect a 910B model on PP=2 over PCIe (no InfiniBand) — a functional validation, not a performance-tuned result. Full detail: `bench-results/RESULTS.md`.
 
 ## Prerequisites
 
@@ -104,6 +104,7 @@ kubectl delete -f dgd-sglang-dsv4-pro-nvfp4-v0514.yaml
 
 - **`flashinfer_cutlass` is required on SM120.** `flashinfer_trtllm_routed` loads and autotunes, then fails at the MoE GEMM (`trtllm_batched_gemm_runner.cu:286`, `_sm100f` kernel — no SM120 build). RTX Pro 6000 (SM120) has FP4 tensor cores, so this is a missing kernel build, not a hardware limitation.
 - **`--cpu-offload-gb` is not supported** for these NVFP4 weights: the SGLang offloader fails on the swizzled block-scale tensors (`offloader.py`, `functional_call` tied-tensor error). Fit memory with 2 nodes and a compact KV pool instead.
+- **`--disable-radix-cache` is a benchmark choice, not a requirement.** Prefix caching is off here because the KV pool is small (`--mem-fraction-static 0.62`) and the random-prompt workload shares no prefixes — so it would only add bookkeeping with no cache hits. For production traffic *with* shared prefixes (system prompts, multi-turn chat, RAG) and a larger KV budget, **enable** it — it's a major TTFT lever there.
 - **The DGD frontend requires a memory request** (set in the manifest: `requests.memory 4Gi`). Without it, the best-effort frontend can be evicted under node memory pressure, which restarts the worker gang.
 - **Run benchmarks detached** (`nohup … &`, as shown) so that a `kubectl exec` disconnect does not terminate the run.
 - **The two paths use different client backends by design**: standalone uses the native `/generate` API (`--backend sglang`); the Dynamo frontend exposes the OpenAI API (`--backend sglang-oai-chat`). Keep the *workload parameters* identical for a fair comparison.
