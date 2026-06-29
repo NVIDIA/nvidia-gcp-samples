@@ -18,7 +18,7 @@ Workload: random, 16 prompts, ISL 128 / OSL 64, rate 4 req/s. First (non-warmed)
 |---|---|---|---|
 | Output tok/s | 56.6 | 54.7 | −3% |
 | Median TTFT | 4.7 s | 5.0 s | +6% |
-| Median TPOT / ITL | 106 / 80 ms | 107 / 80 ms | +1% / ~0% |
+| Median TPOT / ITL | 106 / 80.5 ms | 107 / 80.6 ms | +1% / ~0% |
 
 **Decode latency (TPOT/ITL) is effectively identical** (same engine + SM120 CUTLASS kernels with CUDA graphs — Dynamo adds no per-token cost; ITL ~80 ms either way). Dynamo runs within ~3% of standalone throughput and ~6% on first-token latency — the cost of its frontend/router orchestration. The absolute numbers reflect a 910B model on PP=2 over PCIe (no InfiniBand) — a functional validation, not a performance-tuned result. Full detail: `bench-results/RESULTS.md`.
 
@@ -116,5 +116,3 @@ kubectl delete -f dgd-sglang-dsv4-pro-nvfp4-v0514.yaml
 | `standalone-sglang-dsv4-pro-nvfp4-mn.yaml` | Path A — standalone SGLang, TP=8 PP=2, 2-node StatefulSet + headless Service |
 | `dgd-sglang-dsv4-pro-nvfp4-v0514.yaml` | Path B — Dynamo DGD (community image + Dynamo wheel, `--no-deps`) |
 | `bench-results/RESULTS.md` | Full results, standalone-vs-Dynamo comparison, and SM120 evidence |
-| `failure-analysis.md` | Investigation log: configurations tested, root causes, and the SM120 kernel finding |
-| `archive/` | Superseded test manifests (dev.3 w13, vLLM, single-node OOM, CPU-offload), retained for reference |

@@ -12,8 +12,7 @@ Same workload (random, 16 prompts, ISL 128 / OSL 64, rate 4 req/s); same engine/
 |---|---|---|---|
 | Output tok/s | 56.6 | 54.7 | −3% |
 | Median TTFT | 4.7 s | 5.0 s | +6% |
-| Median TPOT | 106 ms | 107 ms | +1% |
-| Median ITL | 80.5 ms | 80.6 ms | ~0% |
+| Median TPOT / ITL | 106 / 80.5 ms | 107 / 80.6 ms | +1% / ~0% |
 
 **Read:** Decode latency (TPOT/ITL) is **identical** (same engine + SM120 cutlass kernels + CUDA graphs — Dynamo adds no per-token cost; ITL ~80 ms either way). Dynamo runs within ~3% of standalone throughput and ~6% on first-token latency — the cost of its frontend/router orchestration, not the engine. Per-run details below.
 
@@ -84,4 +83,4 @@ Community sglang image + Dynamo wheel (`--no-deps`) + `dynamo.sglang`; same TP=8
 - With CUDA graphs enabled, median **ITL is ~80 ms** (vs ~129 ms eager — a ~38% decode improvement). The remaining multi-second TTFT reflects the 910B model on **PP=2 over PCIe** (no NVLink/IB) + a compact KV pool — a topology cost, not a kernel problem.
 - Both runs are **functional validations** that the NVFP4 MoE path works end-to-end on SM120 — modest by design (2-node PP=2 / PCIe), not performance-tuned numbers.
 
-Raw: standalone `bench_serving_standalone.jsonl`; Dynamo `bench_serving_dgd.jsonl`.
+Reproduce with the `sglang.bench_serving` command in the README (identical workload for both paths).
