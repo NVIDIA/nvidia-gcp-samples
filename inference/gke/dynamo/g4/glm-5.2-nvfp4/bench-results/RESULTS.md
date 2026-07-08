@@ -21,3 +21,21 @@
 Functional validation numbers, not performance-tuned. The two columns use different bench protocols
 (native completion vs OpenAI-chat), so small deltas reflect protocol/token accounting — the takeaway
 is that Dynamo's routing layer adds no measurable cost on a single aggregated node.
+
+## Prefix (radix) cache A/B
+
+Both paths were re-deployed **without** `--disable-radix-cache` (`RadixCache` confirmed in logs; all
+smoke checks passed). Warm bench vs the cache-disabled baselines above:
+
+| Metric (warm) | Standalone cache-off | Standalone cache-on | Dynamo cache-off | Dynamo cache-on |
+|---|---|---|---|---|
+| Output tok/s | 112.57 | 121.08 | 124.45 | 127.08 |
+| Median TTFT (ms) | 240.9 | 127.0 | 139.1 | 128.6 |
+| Median TPOT (ms) | 54.0 | 47.1 | 42.4 | 42.4 |
+| Median ITL (ms) | 38.0 | 33.5 | 32.3 | 31.7 |
+
+Decode metrics (TPOT/ITL) are cache-independent and sit at parity — Dynamo TPOT is identical to the
+decimal. The TTFT drops are cache hits, not engine speedup: the bench uses a fixed seed, so the warm
+run repeats earlier prompts and serves those prefills from cache — which doubles as a functional
+validation of prefix caching on this recipe. Prefix caching is therefore enabled by default in the
+yamls; disable it only when benchmarking.

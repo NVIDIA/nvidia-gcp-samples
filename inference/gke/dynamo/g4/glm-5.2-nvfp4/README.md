@@ -117,8 +117,9 @@ protocols (native vs OpenAI-chat endpoint) — the takeaway is parity.
 - `flashinfer_cutlass` is the only working NVFP4 MoE backend on SM120
   (`flashinfer_trtllm_routed` and `flashinfer_cutedsl` are SM100-only).
 - `--disable-custom-all-reduce` is intentional: RTX PRO 6000 has no NVLink.
-- `--disable-radix-cache` matches the validated configuration; production traffic with shared
-  prefixes may enable prefix caching by removing the flag.
+- Prefix (radix) caching is enabled and validated on both serving paths — correctness and per-token
+  latency are unchanged vs the cache-disabled configuration. Add `--disable-radix-cache` only for
+  benchmarking, so repeated prompts do not hit the cache and skew numbers.
 - Context length up to 196608 was validated (the FP8 KV pool at mem-fraction 0.9 holds ~470k
   tokens on 96 GB GPUs).
 
