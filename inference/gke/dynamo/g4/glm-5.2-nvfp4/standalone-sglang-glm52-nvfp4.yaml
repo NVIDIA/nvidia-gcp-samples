@@ -1,0 +1,79 @@
+# GLM-5.2-NVFP4 on RTX PRO 6000 (SM120) — SGLang standalone, TP=8 single node.
+# Image: built from the Dockerfile in this folder (SGLang + FlashInfer 0.6.13 + DeepGEMM nv_dev
+# + sglang PR #26928 baked in). Replace <YOUR_IMAGE> and <YOUR_MODEL_PVC>; MODEL_DIR must point
+# at the downloaded nvidia/GLM-5.2-NVFP4 checkpoint (unmodified config.json).
+apiVersion: v1
+kind: Service
+metadata:
+  name: sglang-glm52
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector: { app: sglang-glm52 }
+  ports:
+    - { name: http, port: 30000 }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: sglang-glm52
+spec:
+  serviceName: sglang-glm52
+  replicas: 1
+  selector:
+    matchLabels: { app: sglang-glm52 }
+  template:
+    metadata:
+      labels: { app: sglang-glm52 }
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-rtx-pro-6000
+      tolerations:
+        - { key: nvidia.com/gpu, operator: Exists, effect: NoSchedule }
+      containers:
+        - name: sglang
+          image: <YOUR_IMAGE>   # e.g. your-registry/glm52-sm120-sglang:sgl-fi0.6.13-dg2.5.0-pr26928
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              MODEL_DIR=/models/GLM-5.2-NVFP4
+              exec python3 -m sglang.launch_server \
+                --model-path "$MODEL_DIR" \
+                --served-model-name nvidia/GLM-5.2-NVFP4 \
+                --tp-size 8 \
+                --trust-remote-code \
+                --moe-runner-backend flashinfer_cutlass \
+                --fp4-gemm-backend flashinfer_cutlass \
+                --disable-shared-experts-fusion \
+                --dsa-prefill-backend flashinfer_sparse_mla \
+                --dsa-decode-backend flashinfer_sparse_mla \
+                --kv-cache-dtype fp8_e4m3 \
+                --page-size 64 \
+                --mem-fraction-static 0.9 \
+                --cuda-graph-max-bs 256 \
+                --context-length 32768 \
+                --chunked-prefill-size 8192 \
+                --max-running-requests 64 \
+                --disable-radix-cache \
+                --disable-custom-all-reduce \
+                --watchdog-timeout 1800 \
+                --host 0.0.0.0 --port 30000
+          resources:
+            limits:   { nvidia.com/gpu: "8" }
+            requests: { nvidia.com/gpu: "8" }
+          env:
+            # dense-MHA short-prefill branch is SM100-only (silently incorrect on SM120):
+            # route ALL prefills through the sparse path (equivalent for seq <= top-k 2048).
+            - { name: SGLANG_DSA_PREFILL_DENSE_ATTN_KV_LEN_THRESHOLD, value: "0" }
+            - { name: FLASHINFER_DISABLE_VERSION_CHECK, value: "1" }
+            - { name: PYTORCH_CUDA_ALLOC_CONF, value: "expandable_segments:True" }
+          ports:
+            - { containerPort: 30000 }
+          volumeMounts:
+            - { mountPath: /models/GLM-5.2-NVFP4, name: model, readOnly: true }
+            - { mountPath: /dev/shm, name: dshm }
+      volumes:
+        - name: model
+          persistentVolumeClaim: { claimName: <YOUR_MODEL_PVC> }
+        - name: dshm
+          emptyDir: { medium: Memory, sizeLimit: 80Gi }

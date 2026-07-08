@@ -1,0 +1,133 @@
+# GLM-5.2-NVFP4 on GKE g4 (RTX PRO 6000 / SM120) — SGLang standalone + NVIDIA Dynamo
+
+Functional-test recipe for serving
+[`nvidia/GLM-5.2-NVFP4`](https://huggingface.co/nvidia/GLM-5.2-NVFP4) on GKE `g4-standard` nodes
+(8× NVIDIA RTX PRO 6000 Blackwell, SM120) with SGLang — standalone, and behind
+[NVIDIA Dynamo](https://github.com/ai-dynamo/dynamo) (aggregated serving). Companion to the
+[`ds-v4-pro-nvfp4`](../ds-v4-pro-nvfp4) recipe.
+
+- **Topology:** TP=8, single node (~433 GB checkpoint fits 8× 96 GB with FP8 KV cache headroom).
+- **Contents:** `Dockerfile` (self-contained image build) · `pr26928.diff` ·
+  `standalone-sglang-glm52-nvfp4.yaml` · `dgd-sglang-glm52-nvfp4.yaml` (Dynamo) ·
+  `smoke-test.sh` (functional validation) · `bench-results/`.
+
+## Why stock SGLang fails on SM120
+
+GLM-5.2 uses DeepSeek Sparse Attention (DSA). On SM120, the stock paths dead-end
+(see [sglang#26087](https://github.com/sgl-project/sglang/issues/26087)):
+
+| Component | Stock behavior on SM120 |
+|---|---|
+| DSA indexer | calls DeepGEMM → `Unsupported architecture` (released wheels have no SM120 build) |
+| DSA attention `trtllm` / `flashmla_*` | SM100-only kernels |
+| DSA attention `tilelang` | bf16-only kernel; needs ~166 KB shared memory > SM120's ~101 KB |
+| Dense-MHA branch (prefill < 2048 tokens) | SM100-only kernel — silently incorrect output on SM120 |
+| flashinfer ≤ 0.6.12 wheels | lack the SM120 sparse-MLA kernels |
+
+## The fix (3 components, all public)
+
+1. **[sglang PR #26928](https://github.com/sgl-project/sglang/pull/26928)** — adds a
+   `flashinfer_sparse_mla` DSA prefill+decode backend using FlashInfer's public
+   `trtllm_batch_decode_with_kv_cache_mla` API. Until it merges, the `Dockerfile` here applies the
+   4 serving-relevant files from the PR diff at build time.
+2. **[FlashInfer](https://github.com/flashinfer-ai/flashinfer) 0.6.13** (commit `15a2459`) — first
+   release with the SM120 sparse-MLA kernels — plus `flashinfer-cubin==0.6.13` and
+   `flashinfer-jit-cache==0.6.13+cu130`.
+3. **[DeepGEMM](https://github.com/deepseek-ai/DeepGEMM) `nv_dev` branch** (commit `a6b593d`) —
+   SM120-capable; the stock SGLang DSA indexer then works natively.
+
+Plus two required settings (both handled by this recipe):
+- `--disable-shared-experts-fusion` — the ModelOpt NVFP4 checkpoint keeps `mlp.shared_experts`
+  un-quantized; fusing them into packed-FP4 slots fails.
+- env `SGLANG_DSA_PREFILL_DENSE_ATTN_KV_LEN_THRESHOLD=0` (baked into the image) — routes all
+  prefills through the sparse path; the dense-MHA short-prefill branch is SM100-only and silently
+  incorrect on SM120 (top-k 2048 ≥ short sequence length, so sparse is equivalent to dense there).
+
+## 1. Build the image
+
+Requires Docker with BuildKit on x86_64. From this folder:
+
+```bash
+export IMAGE=<your-registry>/glm52-sm120-sglang:sgl-fi0.6.13-dg2.5.0-pr26928
+DOCKER_BUILDKIT=1 docker build --build-arg MAX_JOBS=16 -t "$IMAGE" -f Dockerfile .
+docker push "$IMAGE"
+# optional: refresh the PR diff first
+#   gh pr diff 26928 --repo sgl-project/sglang > pr26928.diff
+```
+
+The build compiles FlashInfer 0.6.13 and DeepGEMM (`nv_dev`) wheels, applies the PR files, and runs
+an off-GPU preflight (asserts wheel versions, DeepGEMM symbols, and that the `flashinfer_sparse_mla`
+backend is registered).
+
+## 2. Stage the model
+
+~433 GB (47 safetensors shards) onto a `ReadWriteMany` PVC (e.g. Filestore). Do **not** modify
+`config.json`.
+
+```bash
+pip install -U "huggingface_hub[cli]"
+hf download nvidia/GLM-5.2-NVFP4 --local-dir /path/on/pvc/GLM-5.2-NVFP4
+```
+
+## 3. Deploy
+
+Replace `<YOUR_IMAGE>` and `<YOUR_MODEL_PVC>` in the yamls, then:
+
+```bash
+# SGLang standalone (native server, port 30000)
+kubectl apply -f standalone-sglang-glm52-nvfp4.yaml
+
+# or NVIDIA Dynamo aggregated (OpenAI-compatible frontend, port 8000);
+# requires the Dynamo platform installed: https://github.com/ai-dynamo/dynamo
+kubectl apply -f dgd-sglang-glm52-nvfp4.yaml
+```
+
+First launch spends 10–30 min on weight load, JIT compilation, autotune, and CUDA-graph capture.
+Persist the JIT caches (`/var/cache/glm52` in the image) on a volume for fast restarts.
+
+## 4. Validate
+
+```bash
+./smoke-test.sh <host> 30000 generate   # standalone
+./smoke-test.sh <host> 8000  chat       # Dynamo frontend
+```
+
+Four deterministic (temperature-0) checks — factual answers, arithmetic, a ~3600-token long-context
+retrieval, and (chat mode) exact instruction following. All four must pass; garbled output indicates
+a wrong kernel path — re-check the image build and the two required settings above.
+
+## Functional benchmark
+
+`sglang.bench_serving`, random dataset, 16 prompts, ISL 128 / OSL 64, request rate 4; warm runs
+(JIT caches populated). Details in [`bench-results/RESULTS.md`](bench-results/RESULTS.md).
+
+| Metric | SGLang standalone | Dynamo (aggregated) | Δ |
+|---|---|---|---|
+| Output tok/s | 112.57 | 124.45 | +10.6% |
+| Median TTFT (ms) | 240.9 | 139.1 | −42.3% |
+| Median TPOT (ms) | 54.0 | 42.4 | −21.5% |
+| Median ITL (ms) | 38.0 | 32.3 | −15.0% |
+
+Functional validation numbers, not performance-tuned; deltas mainly reflect the different bench
+protocols (native vs OpenAI-chat endpoint) — the takeaway is parity.
+
+## Notes
+
+- Do not enable MTP/speculative decoding on SM120.
+- `flashinfer_cutlass` is the only working NVFP4 MoE backend on SM120
+  (`flashinfer_trtllm_routed` and `flashinfer_cutedsl` are SM100-only).
+- `--disable-custom-all-reduce` is intentional: RTX PRO 6000 has no NVLink.
+- `--disable-radix-cache` matches the validated configuration; production traffic with shared
+  prefixes may enable prefix caching by removing the flag.
+- Context length up to 196608 was validated (the FP8 KV pool at mem-fraction 0.9 holds ~470k
+  tokens on 96 GB GPUs).
+
+## References
+
+- Model: https://huggingface.co/nvidia/GLM-5.2-NVFP4
+- SGLang SM120 GLM support PR (the fix used here): https://github.com/sgl-project/sglang/pull/26928
+- Earlier SM120 GLM DSA enablement PR (starting point of this investigation):
+  https://github.com/sgl-project/sglang/pull/29586
+- Original SM120 issue: https://github.com/sgl-project/sglang/issues/26087
+- FlashInfer: https://github.com/flashinfer-ai/flashinfer · DeepGEMM: https://github.com/deepseek-ai/DeepGEMM
+- NVIDIA Dynamo: https://github.com/ai-dynamo/dynamo
