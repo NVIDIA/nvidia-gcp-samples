@@ -61,8 +61,8 @@ spec:
             limits:   { nvidia.com/gpu: "8" }
             requests: { nvidia.com/gpu: "8" }
           env:
-            # dense-MHA short-prefill branch is SM100-only (silently incorrect on SM120):
-            # route ALL prefills through the sparse path (equivalent for seq <= top-k 2048).
+            # defensive no-op on this build: dsa_backend gates the dense-MHA short-prefill
+            # branch to SM90/SM100, so SM120 always uses the sparse path.
             - { name: SGLANG_DSA_PREFILL_DENSE_ATTN_KV_LEN_THRESHOLD, value: "0" }
             - { name: FLASHINFER_DISABLE_VERSION_CHECK, value: "1" }
             - { name: PYTORCH_CUDA_ALLOC_CONF, value: "expandable_segments:True" }

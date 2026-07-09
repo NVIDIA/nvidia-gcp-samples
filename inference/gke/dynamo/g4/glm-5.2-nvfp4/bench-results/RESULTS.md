@@ -1,8 +1,8 @@
 # GLM-5.2-NVFP4 on RTX PRO 6000 (SM120) — SGLang Benchmark (Standalone + Dynamo)
 
-**Date:** 2026-07-08 · **Status:** ✅ serving + benchmarked (default config, prefix caching on)
-**Model:** `nvidia/GLM-5.2-NVFP4` (MoE with DeepSeek Sparse Attention; NVFP4 experts, FP8 KV cache)
-**Hardware:** 8× RTX PRO 6000 (SM120 Blackwell, 96 GB) — one GKE `g4-standard` node, TP=8, PCIe only
+- **Status:** ✅ serving + benchmarked (default config, prefix caching on)
+- **Model:** `nvidia/GLM-5.2-NVFP4` (MoE with DeepSeek Sparse Attention; NVFP4 experts, FP8 KV cache)
+- **Hardware:** 8× RTX PRO 6000 (SM120 Blackwell, 96 GB) — one GKE `g4-standard` node, TP=8, PCIe only
 
 ## Standalone vs Dynamo (same workload)
 

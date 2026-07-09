@@ -3,8 +3,7 @@
 Functional-test recipe for serving
 [`nvidia/GLM-5.2-NVFP4`](https://huggingface.co/nvidia/GLM-5.2-NVFP4) on GKE `g4-standard` nodes
 (8× NVIDIA RTX PRO 6000 Blackwell, SM120) with SGLang — standalone, and behind
-[NVIDIA Dynamo](https://github.com/ai-dynamo/dynamo) (aggregated serving). Companion to the
-[`ds-v4-pro-nvfp4`](../ds-v4-pro-nvfp4) recipe.
+[NVIDIA Dynamo](https://github.com/ai-dynamo/dynamo) (aggregated serving).
 
 - **Topology:** TP=8, single node (~433 GB checkpoint fits 8× 96 GB with FP8 KV cache headroom).
 - **Contents:** `Dockerfile` (self-contained image build) · `pr26928.diff` ·
@@ -21,10 +20,9 @@ GLM-5.2 uses DeepSeek Sparse Attention (DSA). On SM120, the stock paths dead-end
 | DSA indexer | calls DeepGEMM → `Unsupported architecture` (released wheels have no SM120 build) |
 | DSA attention `trtllm` / `flashmla_*` | SM100-only kernels |
 | DSA attention `tilelang` | bf16-only kernel; needs ~166 KB shared memory > SM120's ~101 KB |
-| Dense-MHA branch (prefill < 2048 tokens) | SM100-only kernel — silently incorrect output on SM120 |
 | flashinfer ≤ 0.6.12 wheels | lack the SM120 sparse-MLA kernels |
 
-## The fix (3 components, all public)
+## The fix (3 components)
 
 1. **[sglang PR #26928](https://github.com/sgl-project/sglang/pull/26928)** — adds a
    `flashinfer_sparse_mla` DSA prefill+decode backend using FlashInfer's public
@@ -36,12 +34,24 @@ GLM-5.2 uses DeepSeek Sparse Attention (DSA). On SM120, the stock paths dead-end
 3. **[DeepGEMM](https://github.com/deepseek-ai/DeepGEMM) `nv_dev` branch** (commit `a6b593d`) —
    SM120-capable; the stock SGLang DSA indexer then works natively.
 
-Plus two required settings (both handled by this recipe):
-- `--disable-shared-experts-fusion` — the ModelOpt NVFP4 checkpoint keeps `mlp.shared_experts`
-  un-quantized; fusing them into packed-FP4 slots fails.
-- env `SGLANG_DSA_PREFILL_DENSE_ATTN_KV_LEN_THRESHOLD=0` (baked into the image) — routes all
-  prefills through the sparse path; the dense-MHA short-prefill branch is SM100-only and silently
-  incorrect on SM120 (top-k 2048 ≥ short sequence length, so sparse is equivalent to dense there).
+Plus one required flag: `--disable-shared-experts-fusion` — the ModelOpt NVFP4 checkpoint keeps
+`mlp.shared_experts` un-quantized; fusing them into packed-FP4 slots fails.
+
+(The image also sets `SGLANG_DSA_PREFILL_DENSE_ATTN_KV_LEN_THRESHOLD=0` defensively. On this pinned
+SGLang build it is a no-op: the dense-MHA short-prefill branch is already restricted to SM90/SM100 by
+an architecture check in `dsa_backend.py`, so SM120 always uses the sparse path — equivalent for short
+sequences, since DSA top-k 2048 ≥ sequence length.)
+
+## Prerequisites
+
+- A GKE cluster with a `g4-standard` node pool (8× RTX PRO 6000 per node) and `kubectl` context set
+  to it. For cluster and Dynamo platform setup, refer to the official Dynamo GKE guide:
+  https://github.com/ai-dynamo/dynamo/blob/main/docs/kubernetes/cloud-providers/gke/gke.md
+- **1 node (8 GPUs)** per deployment path (TP=8, single node) — run one path at a time on the same
+  node, or both in parallel on two nodes.
+- Docker with BuildKit on x86_64 and a container registry the cluster can pull from.
+- A `ReadWriteMany` PVC (e.g. Filestore) with ~450 GB free for the model checkpoint.
+- Dynamo path only: the Dynamo platform (operator + etcd + NATS) installed in the cluster.
 
 ## 1. Build the image
 
@@ -61,8 +71,7 @@ backend is registered).
 
 ## 2. Stage the model
 
-~433 GB (47 safetensors shards) onto a `ReadWriteMany` PVC (e.g. Filestore). Do **not** modify
-`config.json`.
+~433 GB (47 safetensors shards) onto a `ReadWriteMany` PVC (e.g. Filestore).
 
 ```bash
 pip install -U "huggingface_hub[cli]"
@@ -94,7 +103,7 @@ Persist the JIT caches (`/var/cache/glm52` in the image) on a volume for fast re
 
 Four deterministic (temperature-0) checks — factual answers, arithmetic, a ~3600-token long-context
 retrieval, and (chat mode) exact instruction following. All four must pass; garbled output indicates
-a wrong kernel path — re-check the image build and the two required settings above.
+a wrong kernel path — re-check the image build and the serve flags above.
 
 ## Functional benchmark
 
@@ -115,8 +124,9 @@ protocols (native vs OpenAI-chat endpoint) — the takeaway is parity.
 ## Notes
 
 - Do not enable MTP/speculative decoding on SM120.
-- `flashinfer_cutlass` is the only working NVFP4 MoE backend on SM120
-  (`flashinfer_trtllm_routed` and `flashinfer_cutedsl` are SM100-only).
+- Use `flashinfer_cutlass` for the NVFP4 MoE on SM120: the default `flashinfer_trtllm_routed`
+  kernel is SM100-only (`_sm100f`) and fails at runtime on SM120 (see the
+  [`ds-v4-pro-nvfp4`](../ds-v4-pro-nvfp4) recipe for the detailed evidence).
 - `--disable-custom-all-reduce` is intentional: RTX PRO 6000 has no NVLink.
 - Prefix (radix) caching is enabled and validated on both serving paths — correctness and per-token
   latency are unchanged vs the cache-disabled configuration. Add `--disable-radix-cache` only for

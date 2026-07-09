@@ -6,8 +6,7 @@
 #      base_runner.py autotune hunks skipped: non-correctness, cutlass MoE already triggers autotune)
 # Build context must contain pr26928.diff (this folder; refresh: `gh pr diff 26928 -R sgl-project/sglang`).
 # Serve: --dsa-prefill-backend flashinfer_sparse_mla --dsa-decode-backend flashinfer_sparse_mla
-#   --kv-cache-dtype fp8_e4m3 + cutlass MoE x2 + --disable-shared-experts-fusion;
-#   env SGLANG_DSA_PREFILL_DENSE_ATTN_KV_LEN_THRESHOLD=0. Full flags in README.md.
+#   --kv-cache-dtype fp8_e4m3 + cutlass MoE x2 + --disable-shared-experts-fusion. Full flags in README.md.
 # Notes: sglang cu13 image ships the CUDA toolkit at /usr/local/cuda (no pip-wheel nvrtc-link dance);
 # sgl-deep-gemm is uninstalled so the real deep_gemm module wins.
 
@@ -103,8 +102,8 @@ from flashinfer.mla import trtllm_batch_decode_with_kv_cache_mla  # noqa: F401
 print("preflight ok:", flashinfer.__version__, deep_gemm.__version__, "| PR #26928 registered")
 PY
 
-# SGLANG_DSA_PREFILL_DENSE_ATTN_KV_LEN_THRESHOLD=0 is REQUIRED for correctness on SM120:
-# the dense-MHA short-prefill branch uses an SM100-only kernel that is silently incorrect.
+# DSA threshold is defensive (no-op on this base: dsa_backend already gates the dense-MHA
+# short-prefill branch to SM90/SM100, so SM120 always takes the sparse path).
 ENV SGLANG_DSA_PREFILL_DENSE_ATTN_KV_LEN_THRESHOLD=0 \
     FLASHINFER_DISABLE_VERSION_CHECK=1 \
     FLASHINFER_WORKSPACE_BASE=/var/cache/glm52/flashinfer \
