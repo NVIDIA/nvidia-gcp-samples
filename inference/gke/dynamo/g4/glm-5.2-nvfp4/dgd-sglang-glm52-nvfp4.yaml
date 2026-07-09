@@ -1,0 +1,85 @@
+# GLM-5.2-NVFP4 on RTX PRO 6000 (SM120) — NVIDIA Dynamo DGD (aggregated), TP=8 single node.
+# Requires the Dynamo platform installed (https://github.com/ai-dynamo/dynamo).
+# Image: built from the Dockerfile in this folder; the Dynamo wheel is installed at startup with
+# --no-deps so the image's SGLang build stays intact. Replace <YOUR_IMAGE> and <YOUR_MODEL_PVC>.
+---
+apiVersion: nvidia.com/v1alpha1
+kind: DynamoGraphDeployment
+metadata:
+  name: glm52-sglang
+spec:
+  services:
+
+    Frontend:
+      componentType: frontend
+      replicas: 1
+      resources:
+        requests: { cpu: "1", memory: 4Gi }
+        limits:   { cpu: "4", memory: 12Gi }
+      extraPodSpec:
+        mainContainer:
+          image: <YOUR_IMAGE>
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -e
+              pip install --no-deps --quiet ai-dynamo ai-dynamo-runtime --extra-index-url https://pypi.nvidia.com
+              pip install --quiet blake3 accelerate || true
+              exec python3 -m dynamo.frontend --router-mode kv --no-kv-events
+
+    agg:
+      componentType: worker
+      replicas: 1
+      resources:
+        limits:   { gpu: "8" }
+        requests: { gpu: "8" }
+      sharedMemory:
+        size: 80Gi
+      extraPodSpec:
+        nodeSelector:
+          cloud.google.com/gke-accelerator: nvidia-rtx-pro-6000
+        tolerations:
+          - { key: nvidia.com/gpu, operator: Exists, effect: NoSchedule }
+        mainContainer:
+          image: <YOUR_IMAGE>
+          startupProbe:
+            httpGet: { path: /live, port: 9090 }
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 120   # first launch: model load + JIT + CUDA-graph capture (10-30 min)
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -e
+              MODEL_DIR=/models/GLM-5.2-NVFP4
+              pip install --no-deps --quiet ai-dynamo ai-dynamo-runtime --extra-index-url https://pypi.nvidia.com
+              pip install --quiet blake3 accelerate || true
+              exec python3 -m dynamo.sglang \
+                --model-path "$MODEL_DIR" \
+                --served-model-name nvidia/GLM-5.2-NVFP4 \
+                --trust-remote-code \
+                --tensor-parallel-size 8 \
+                --moe-runner-backend flashinfer_cutlass \
+                --fp4-gemm-backend flashinfer_cutlass \
+                --disable-shared-experts-fusion \
+                --dsa-prefill-backend flashinfer_sparse_mla \
+                --dsa-decode-backend flashinfer_sparse_mla \
+                --kv-cache-dtype fp8_e4m3 \
+                --page-size 64 \
+                --mem-fraction-static 0.9 \
+                --cuda-graph-max-bs 256 \
+                --context-length 32768 \
+                --chunked-prefill-size 8192 \
+                --max-running-requests 64 \
+                --disable-custom-all-reduce \
+                --host 0.0.0.0 \
+                --watchdog-timeout 3600
+          env:
+            - { name: SGLANG_DSA_PREFILL_DENSE_ATTN_KV_LEN_THRESHOLD, value: "0" }
+            - { name: FLASHINFER_DISABLE_VERSION_CHECK, value: "1" }
+            - { name: PYTORCH_CUDA_ALLOC_CONF, value: "expandable_segments:True" }
+          volumeMounts:
+            - { mountPath: /models/GLM-5.2-NVFP4, name: model, readOnly: true }
+        volumes:
+          - name: model
+            persistentVolumeClaim: { claimName: <YOUR_MODEL_PVC> }
