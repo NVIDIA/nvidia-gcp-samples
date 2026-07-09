@@ -13,8 +13,8 @@ Functional-test recipe for serving
 |---|---|
 | `Dockerfile` | Self-contained runtime image build: FlashInfer @ `15a2459` (SM120 sparse-MLA) + DeepGEMM `nv_dev` (SM120 indexer) source-built, sglang PR #26928 applied, off-GPU preflight |
 | `pr26928.diff` | [sglang PR #26928](https://github.com/sgl-project/sglang/pull/26928) diff, applied at image build until it merges (refresh: `gh pr diff 26928 -R sgl-project/sglang`) |
-| `standalone-sglang-glm52-nvfp4.yaml` | Path A — standalone SGLang StatefulSet + Service (native server, port 30000) |
-| `dgd-sglang-glm52-nvfp4.yaml` | Path B — Dynamo `DynamoGraphDeployment` (frontend + one aggregated TP=8 worker, OpenAI-compatible endpoint on port 8000; Dynamo wheel installed at startup with `--no-deps`) |
+| `standalone-sglang-glm52-nvfp4.yaml` | Standalone SGLang StatefulSet + Service (native server, port 30000) |
+| `dgd-sglang-glm52-nvfp4.yaml` | Dynamo `DynamoGraphDeployment` (frontend + one aggregated TP=8 worker, OpenAI-compatible endpoint on port 8000) |
 | `smoke-test.sh` | 4 deterministic temperature-0 functional checks; `chat` mode (Dynamo) and `generate` mode (standalone) |
 | `bench-results/RESULTS.md` | Full per-run benchmark detail, standalone-vs-Dynamo comparison, prefix-cache A/B |
 
