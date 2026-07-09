@@ -5,8 +5,6 @@ Functional-test recipe for serving
 (8× NVIDIA RTX PRO 6000 Blackwell, SM120) with SGLang — standalone, and behind
 [NVIDIA Dynamo](https://github.com/ai-dynamo/dynamo) (aggregated serving).
 
-- **Topology:** TP=8, single node (~433 GB checkpoint fits 8× 96 GB with FP8 KV cache headroom).
-
 ## Files
 
 | File | Purpose |
@@ -17,6 +15,15 @@ Functional-test recipe for serving
 | `dgd-sglang-glm52-nvfp4.yaml` | Dynamo `DynamoGraphDeployment` (frontend + one aggregated TP=8 worker, OpenAI-compatible endpoint on port 8000) |
 | `smoke-test.sh` | 4 deterministic temperature-0 functional checks; `chat` mode (Dynamo) and `generate` mode (standalone) |
 | `bench-results/RESULTS.md` | Full per-run benchmark detail, standalone-vs-Dynamo comparison, prefix-cache A/B |
+
+## Topology
+
+```
+1× g4-standard      (8 GPUs, RTX PRO 6000 Blackwell SM_120, 96 GB each, PCIe — no NVLink)
+├── TP=8            (one SGLang worker, single node)
+├── modelopt_fp4    (NVFP4 weights, ~433 GB checkpoint; FP8 E4M3 KV cache, mem-fraction 0.9)
+└── DSA             (DeepSeek Sparse Attention via flashinfer_sparse_mla, top-k 2048, page size 64)
+```
 
 ## Why stock SGLang fails on SM120
 
