@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1.7
 # GLM-5.2-NVFP4 SM120 (RTX Pro 6000) SGLang runtime — the COMPLETE working recipe (see README.md):
 #   1. sglang nightly base (transformers 5.12.1 -> parses glm_moe_dsa natively)
-#   2. FlashInfer 0.6.13 (SM120 sparse-MLA kernels) + DeepGEMM 2.5.0 nv_dev (SM120 indexer), source-built
+#   2. FlashInfer @ 15a2459 (post-0.6.13 main: includes flashinfer#3395 = SM120 sparse-MLA kernels;
+#      release wheels <=0.6.13 lack them) + DeepGEMM 2.5.0 nv_dev (SM120 indexer), source-built
 #   3. sglang PR #26928 BAKED IN (flashinfer_sparse_mla DSA backend; 4 files via `git apply --include`,
 #      base_runner.py autotune hunks skipped: non-correctness, cutlass MoE already triggers autotune)
 # Build context must contain pr26928.diff (this folder; refresh: `gh pr diff 26928 -R sgl-project/sglang`).

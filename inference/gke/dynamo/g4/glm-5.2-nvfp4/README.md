@@ -18,9 +18,9 @@ GLM-5.2 uses DeepSeek Sparse Attention (DSA). On SM120, the stock paths dead-end
 | Component | Stock behavior on SM120 |
 |---|---|
 | DSA indexer | calls DeepGEMM → `Unsupported architecture` (released wheels have no SM120 build) |
-| DSA attention `trtllm` / `flashmla_*` | SM100-only kernels |
+| DSA attention `trtllm` / `flashmla_*` | SM90/SM100-only kernels — no SM120 build |
 | DSA attention `tilelang` | bf16-only kernel; needs ~166 KB shared memory > SM120's ~101 KB |
-| flashinfer ≤ 0.6.12 wheels | lack the SM120 sparse-MLA kernels |
+| flashinfer release wheels (≤ 0.6.13) | lack the SM120 sparse-MLA kernels ([flashinfer#3395](https://github.com/flashinfer-ai/flashinfer/pull/3395) merged after the 0.6.13 release cut) |
 
 ## The fix (3 components)
 
@@ -28,8 +28,10 @@ GLM-5.2 uses DeepSeek Sparse Attention (DSA). On SM120, the stock paths dead-end
    `flashinfer_sparse_mla` DSA prefill+decode backend using FlashInfer's public
    `trtllm_batch_decode_with_kv_cache_mla` API. Until it merges, the `Dockerfile` here applies the
    4 serving-relevant files from the PR diff at build time.
-2. **[FlashInfer](https://github.com/flashinfer-ai/flashinfer) 0.6.13** (commit `15a2459`) — first
-   release with the SM120 sparse-MLA kernels — plus `flashinfer-cubin==0.6.13` and
+2. **[FlashInfer](https://github.com/flashinfer-ai/flashinfer)** — source-built at commit `15a2459`
+   (post-0.6.13 `main`, which includes
+   [flashinfer#3395](https://github.com/flashinfer-ai/flashinfer/pull/3395), the SM120 sparse-MLA
+   kernels; release wheels up to 0.6.13 lack them) — plus `flashinfer-cubin==0.6.13` and
    `flashinfer-jit-cache==0.6.13+cu130`.
 3. **[DeepGEMM](https://github.com/deepseek-ai/DeepGEMM) `nv_dev` branch** (commit `a6b593d`) —
    SM120-capable; the stock SGLang DSA indexer then works natively.
