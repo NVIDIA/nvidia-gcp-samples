@@ -104,10 +104,10 @@ a wrong kernel path — re-check the image build and the two required settings a
 
 | Metric | SGLang standalone | Dynamo (aggregated) | Δ |
 |---|---|---|---|
-| Output tok/s | 121.08 | 127.08 | +5.0% |
-| Median TTFT (ms) | 127.0 | 128.6 | +1.3% |
-| Median TPOT (ms) | 47.1 | 42.4 | −9.8% |
-| Median ITL (ms) | 33.5 | 31.7 | −5.2% |
+| Output tok/s | 123.61 | 126.95 | +2.7% |
+| Median TTFT (ms) | 120.9 | 122.8 | +1.6% |
+| Median TPOT (ms) | 45.5 | 42.6 | −6.3% |
+| Median ITL (ms) | 33.5 | 32.2 | −4.0% |
 
 Functional validation numbers, not performance-tuned; deltas mainly reflect the different bench
 protocols (native vs OpenAI-chat endpoint) — the takeaway is parity.
