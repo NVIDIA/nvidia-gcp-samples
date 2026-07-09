@@ -1,4 +1,4 @@
-# GLM-5.2-NVFP4 on GKE g4 (RTX PRO 6000 / SM120) — SGLang standalone + NVIDIA Dynamo
+# GLM-5.2-NVFP4 on GKE g4 (RTX PRO 6000 / SM120)
 
 Functional-test recipe for serving
 [`nvidia/GLM-5.2-NVFP4`](https://huggingface.co/nvidia/GLM-5.2-NVFP4) on GKE `g4-standard` nodes
@@ -6,9 +6,17 @@ Functional-test recipe for serving
 [NVIDIA Dynamo](https://github.com/ai-dynamo/dynamo) (aggregated serving).
 
 - **Topology:** TP=8, single node (~433 GB checkpoint fits 8× 96 GB with FP8 KV cache headroom).
-- **Contents:** `Dockerfile` (self-contained image build) · `pr26928.diff` ·
-  `standalone-sglang-glm52-nvfp4.yaml` · `dgd-sglang-glm52-nvfp4.yaml` (Dynamo) ·
-  `smoke-test.sh` (functional validation) · `bench-results/`.
+
+## Files
+
+| File | Purpose |
+|---|---|
+| `Dockerfile` | Self-contained runtime image build: FlashInfer @ `15a2459` (SM120 sparse-MLA) + DeepGEMM `nv_dev` (SM120 indexer) source-built, sglang PR #26928 applied, off-GPU preflight |
+| `pr26928.diff` | [sglang PR #26928](https://github.com/sgl-project/sglang/pull/26928) diff, applied at image build until it merges (refresh: `gh pr diff 26928 -R sgl-project/sglang`) |
+| `standalone-sglang-glm52-nvfp4.yaml` | Path A — standalone SGLang StatefulSet + Service (native server, port 30000) |
+| `dgd-sglang-glm52-nvfp4.yaml` | Path B — Dynamo `DynamoGraphDeployment` (frontend + one aggregated TP=8 worker, OpenAI-compatible endpoint on port 8000; Dynamo wheel installed at startup with `--no-deps`) |
+| `smoke-test.sh` | 4 deterministic temperature-0 functional checks; `chat` mode (Dynamo) and `generate` mode (standalone) |
+| `bench-results/RESULTS.md` | Full per-run benchmark detail, standalone-vs-Dynamo comparison, prefix-cache A/B |
 
 ## Why stock SGLang fails on SM120
 
