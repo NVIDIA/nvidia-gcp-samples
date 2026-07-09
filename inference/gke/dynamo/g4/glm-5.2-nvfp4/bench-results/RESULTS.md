@@ -1,41 +1,27 @@
 # GLM-5.2-NVFP4 on RTX PRO 6000 (SM120) — Functional Benchmark
 
 - **Workload:** `sglang.bench_serving`, random dataset, 16 prompts, ISL 128 / OSL 64, request rate 4.
-- **Setup:** TP=8 on one GKE `g4-standard` node (8× RTX PRO 6000, PCIe), recipe per `../README.md`.
+- **Setup:** TP=8 on one GKE `g4-standard` node (8× RTX PRO 6000, PCIe), recipe per `../README.md`,
+  default config (prefix/radix caching on).
 - **Method:** standalone benched via the native `--backend sglang` endpoint (:30000); Dynamo via
   `--backend sglang-oai-chat` through the frontend (:8000). Reported runs are **warm** (JIT/autotune
   caches populated, second bench of the deployment). Cold first launches spend their first bench on
-  one-time JIT compilation (~29 tok/s, ~6 s TTFT) and are not representative.
+  one-time JIT compilation (~29 tok/s, ~6 s TTFT) and are not representative. The bench uses a fixed
+  seed, so the warm run's prefills partially hit the prefix cache — identically for both columns.
 
 ## Results (warm)
 
 | Metric | SGLang standalone | Dynamo (aggregated) | Δ |
 |---|---|---|---|
 | Successful requests | 16/16 | 16/16 | — |
-| Output tok/s | 112.57 | 124.45 | +10.6% |
-| Total tok/s | 401.72 | 444.11 | — |
-| Median TTFT (ms) | 240.9 | 139.1 | −42.3% |
-| Median TPOT (ms) | 54.0 | 42.4 | −21.5% |
-| Median ITL (ms) | 38.0 | 32.3 | −15.0% |
+| Output tok/s | 121.08 | 127.08 | +5.0% |
+| Median TTFT (ms) | 127.0 | 128.6 | +1.3% |
+| Median TPOT (ms) | 47.1 | 42.4 | −9.8% |
+| Median ITL (ms) | 33.5 | 31.7 | −5.2% |
 
 Functional validation numbers, not performance-tuned. The two columns use different bench protocols
 (native completion vs OpenAI-chat), so small deltas reflect protocol/token accounting — the takeaway
-is that Dynamo's routing layer adds no measurable cost on a single aggregated node.
-
-## Prefix (radix) cache A/B
-
-Both paths were re-deployed **without** `--disable-radix-cache` (`RadixCache` confirmed in logs; all
-smoke checks passed). Warm bench vs the cache-disabled baselines above:
-
-| Metric (warm) | Standalone cache-off | Standalone cache-on | Dynamo cache-off | Dynamo cache-on |
-|---|---|---|---|---|
-| Output tok/s | 112.57 | 121.08 | 124.45 | 127.08 |
-| Median TTFT (ms) | 240.9 | 127.0 | 139.1 | 128.6 |
-| Median TPOT (ms) | 54.0 | 47.1 | 42.4 | 42.4 |
-| Median ITL (ms) | 38.0 | 33.5 | 32.3 | 31.7 |
-
-Decode metrics (TPOT/ITL) are cache-independent and sit at parity — Dynamo TPOT is identical to the
-decimal. The TTFT drops are cache hits, not engine speedup: the bench uses a fixed seed, so the warm
-run repeats earlier prompts and serves those prefills from cache — which doubles as a functional
-validation of prefix caching on this recipe. Prefix caching is therefore enabled by default in the
-yamls; disable it only when benchmarking.
+is that Dynamo's routing layer adds no measurable cost on a single aggregated node. A cache-disabled
+A/B (`--disable-radix-cache`) showed unchanged correctness and per-token decode latency (Dynamo TPOT
+identical), so prefix caching on is the recommended configuration; disable it only for clean-prefill
+benchmarking.

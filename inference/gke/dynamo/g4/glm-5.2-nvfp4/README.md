@@ -99,14 +99,15 @@ a wrong kernel path — re-check the image build and the two required settings a
 ## Functional benchmark
 
 `sglang.bench_serving`, random dataset, 16 prompts, ISL 128 / OSL 64, request rate 4; warm runs
-(JIT caches populated). Details in [`bench-results/RESULTS.md`](bench-results/RESULTS.md).
+(JIT caches populated), default config (prefix caching on). Details in
+[`bench-results/RESULTS.md`](bench-results/RESULTS.md).
 
 | Metric | SGLang standalone | Dynamo (aggregated) | Δ |
 |---|---|---|---|
-| Output tok/s | 112.57 | 124.45 | +10.6% |
-| Median TTFT (ms) | 240.9 | 139.1 | −42.3% |
-| Median TPOT (ms) | 54.0 | 42.4 | −21.5% |
-| Median ITL (ms) | 38.0 | 32.3 | −15.0% |
+| Output tok/s | 121.08 | 127.08 | +5.0% |
+| Median TTFT (ms) | 127.0 | 128.6 | +1.3% |
+| Median TPOT (ms) | 47.1 | 42.4 | −9.8% |
+| Median ITL (ms) | 33.5 | 31.7 | −5.2% |
 
 Functional validation numbers, not performance-tuned; deltas mainly reflect the different bench
 protocols (native vs OpenAI-chat endpoint) — the takeaway is parity.
