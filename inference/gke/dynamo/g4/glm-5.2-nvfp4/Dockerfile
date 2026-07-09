@@ -6,8 +6,10 @@
 #   3. sglang PR #26928 BAKED IN (flashinfer_sparse_mla DSA backend; 4 files via `git apply --include`,
 #      base_runner.py autotune hunks skipped: non-correctness, cutlass MoE already triggers autotune)
 # Build context must contain pr26928.diff (this folder; refresh: `gh pr diff 26928 -R sgl-project/sglang`).
-# Serve: --dsa-prefill-backend flashinfer_sparse_mla --dsa-decode-backend flashinfer_sparse_mla
-#   --kv-cache-dtype fp8_e4m3 + cutlass MoE x2 + --disable-shared-experts-fusion. Full flags in README.md.
+# Serve flags come from the deployment yamls in this folder
+#   (standalone-sglang-glm52-nvfp4.yaml / dgd-sglang-glm52-nvfp4.yaml). Key ones:
+#   --dsa-prefill-backend flashinfer_sparse_mla, --dsa-decode-backend flashinfer_sparse_mla, --kv-cache-dtype fp8_e4m3,
+#   cutlass MoE x2, --disable-shared-experts-fusion.
 # Notes: sglang cu13 image ships the CUDA toolkit at /usr/local/cuda (no pip-wheel nvrtc-link dance);
 # sgl-deep-gemm is uninstalled so the real deep_gemm module wins.
 
