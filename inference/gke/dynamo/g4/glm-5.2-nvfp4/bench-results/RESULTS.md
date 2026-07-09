@@ -43,7 +43,7 @@ columns — which is why its TTFT (~121 ms) is lower than the fresh-prompt TTFT 
 | **ITL** median / P99 | 33.5 / 138.8 ms |
 | **E2E** median / P99 | 1,557 / 2,543 ms |
 
-Fresh-prompt run (bench #1, no cache hits): 112.88 tok/s out, median TTFT 245.3 ms.
+Fresh-prompt run (bench #1 — same config, prefix cache on but still empty, so no hits): 112.88 tok/s out, median TTFT 245.3 ms.
 GPU at serve: ~88.5 / 97.9 GB used per GPU (weights + FP8 KV pool at `--mem-fraction-static 0.9` +
 CUDA-graph capture).
 
@@ -65,7 +65,7 @@ worker); YAML: [`../dgd-sglang-glm52-nvfp4.yaml`](../dgd-sglang-glm52-nvfp4.yaml
 | **ITL** median / P99 | 32.2 / 135.4 ms |
 | **E2E** median / P99 | 1,372 / 2,402 ms |
 
-Fresh-prompt run (bench #1, no cache hits): 112.91 tok/s out, median TTFT 238.8 ms.
+Fresh-prompt run (bench #1 — same config, prefix cache on but still empty, so no hits): 112.91 tok/s out, median TTFT 238.8 ms.
 GPU at serve: ~88.4 / 97.9 GB used per GPU.
 
 ## Interpretation
