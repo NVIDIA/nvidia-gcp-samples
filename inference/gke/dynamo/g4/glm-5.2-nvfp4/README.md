@@ -1,14 +1,29 @@
-# GLM-5.2-NVFP4 on GKE g4 (RTX PRO 6000 / SM120) — SGLang standalone + NVIDIA Dynamo
+# GLM-5.2-NVFP4 on GKE g4 (RTX PRO 6000 / SM120)
 
 Functional-test recipe for serving
 [`nvidia/GLM-5.2-NVFP4`](https://huggingface.co/nvidia/GLM-5.2-NVFP4) on GKE `g4-standard` nodes
 (8× NVIDIA RTX PRO 6000 Blackwell, SM120) with SGLang — standalone, and behind
 [NVIDIA Dynamo](https://github.com/ai-dynamo/dynamo) (aggregated serving).
 
-- **Topology:** TP=8, single node (~433 GB checkpoint fits 8× 96 GB with FP8 KV cache headroom).
-- **Contents:** `Dockerfile` (self-contained image build) · `pr26928.diff` ·
-  `standalone-sglang-glm52-nvfp4.yaml` · `dgd-sglang-glm52-nvfp4.yaml` (Dynamo) ·
-  `smoke-test.sh` (functional validation) · `bench-results/`.
+## Files
+
+| File | Purpose |
+|---|---|
+| `Dockerfile` | Self-contained runtime image build: FlashInfer @ `15a2459` (SM120 sparse-MLA) + DeepGEMM `nv_dev` (SM120 indexer) source-built, sglang PR #26928 applied, off-GPU preflight |
+| `pr26928.diff` | [sglang PR #26928](https://github.com/sgl-project/sglang/pull/26928) diff, applied at image build until it merges (refresh: `gh pr diff 26928 -R sgl-project/sglang`) |
+| `standalone-sglang-glm52-nvfp4.yaml` | Standalone SGLang StatefulSet + Service (native server, port 30000) |
+| `dgd-sglang-glm52-nvfp4.yaml` | Dynamo `DynamoGraphDeployment` (frontend + one aggregated TP=8 worker, OpenAI-compatible endpoint on port 8000) |
+| `smoke-test.sh` | 4 deterministic temperature-0 functional checks; `chat` mode (Dynamo) and `generate` mode (standalone) |
+| `bench-results/RESULTS.md` | Full per-run benchmark detail, standalone-vs-Dynamo comparison, prefix-cache A/B |
+
+## Topology
+
+```
+1× g4-standard      (8 GPUs, RTX PRO 6000 Blackwell SM_120, 96 GB each, PCIe — no NVLink)
+├── TP=8            (one SGLang worker, single node)
+├── modelopt_fp4    (NVFP4 weights, ~433 GB checkpoint; FP8 E4M3 KV cache, mem-fraction 0.9)
+└── DSA             (DeepSeek Sparse Attention via flashinfer_sparse_mla, top-k 2048, page size 64)
+```
 
 ## Why stock SGLang fails on SM120
 
