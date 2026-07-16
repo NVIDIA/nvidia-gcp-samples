@@ -1,0 +1,84 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: model-download
+  namespace: bionemo-nim
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-secret
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-rtx-pro-6000-vws
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - name: downloader
+        image: nvcr.io/nvidia/pytorch:24.10-py3
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          set -euo pipefail
+
+          echo "Checking GPU"
+          nvidia-smi --query-gpu=name,memory.total --format=csv
+
+          echo "Installing Python packages"
+          pip install --quiet --no-cache-dir "transformers>=4.36.0,<4.47.0" accelerate
+
+          echo "Downloading ESM-2 650M"
+          python3 - <<'PY'
+          import os
+          from transformers import AutoTokenizer, EsmForMaskedLM, EsmModel, EsmTokenizer
+
+          cache = "/models/esm2"
+          os.environ["HF_HOME"] = "/models"
+          os.makedirs(cache, exist_ok=True)
+
+          EsmTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir=cache)
+          EsmModel.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir=cache)
+          AutoTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir=cache)
+          EsmForMaskedLM.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir=cache)
+          print("ESM-2 download complete")
+          PY
+
+          echo "Downloading ESMFold"
+          python3 - <<'PY'
+          import os
+          from transformers import AutoTokenizer, EsmForProteinFolding
+
+          cache = "/models/esmfold"
+          os.environ["HF_HOME"] = "/models"
+          os.makedirs(cache, exist_ok=True)
+
+          AutoTokenizer.from_pretrained("facebook/esmfold_v1", cache_dir=cache)
+          EsmForProteinFolding.from_pretrained(
+              "facebook/esmfold_v1",
+              cache_dir=cache,
+              low_cpu_mem_usage=True,
+          )
+          print("ESMFold download complete")
+          PY
+
+          du -sh /models
+          echo "Model download complete"
+        env:
+        - name: HF_HOME
+          value: /models
+        volumeMounts:
+        - name: model-cache
+          mountPath: /models
+        resources:
+          limits:
+            nvidia.com/gpu: "1"
+          requests:
+            memory: 24Gi
+            cpu: "4"
+      volumes:
+      - name: model-cache
+        persistentVolumeClaim:
+          claimName: dashboard-models-pvc
