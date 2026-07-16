@@ -7,3 +7,4 @@ Samples in this use case are organized by Google Cloud service, then by NVIDIA l
 ## Samples
 
 - [Agent Platform / AIQ](agent-platform/aiq)
+- [Agent Platform / PDF Parsing Agent](agent-platform/pdf-parsing-agent)

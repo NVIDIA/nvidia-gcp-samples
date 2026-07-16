@@ -1,0 +1,6 @@
+google-adk
+google-cloud-aiplatform
+google-auth
+openai
+pymupdf
+pillow
