@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dashboard-models-pvc
+  namespace: bionemo-nim
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: hyperdisk-balanced
+  resources:
+    requests:
+      storage: 100Gi

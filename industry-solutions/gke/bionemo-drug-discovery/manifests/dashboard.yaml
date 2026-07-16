@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard
+  namespace: bionemo-nim
+  labels:
+    app: dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dashboard
+  template:
+    metadata:
+      labels:
+        app: dashboard
+    spec:
+      imagePullSecrets:
+      - name: ngc-secret
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-rtx-pro-6000-vws
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - name: dashboard
+        image: nvcr.io/nvidia/pytorch:24.10-py3
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          set -euo pipefail
+
+          apt-get update
+          apt-get install -y --no-install-recommends libxrender1 libxext6 libgl1
+
+          pip install --quiet --no-cache-dir \
+            "jinja2<3.1.0" \
+            "starlette==0.37.2" \
+            "gradio==4.44.1" \
+            "transformers>=4.36.0,<4.47.0" \
+            accelerate \
+            plotly \
+            biopython \
+            scikit-learn \
+            rdkit-pypi \
+            requests \
+            websockets
+
+          export GRADIO_SERVER_NAME="0.0.0.0"
+          export GRADIO_SERVER_PORT="7860"
+          cd /app
+          python app.py
+        ports:
+        - containerPort: 7860
+          name: http
+        env:
+        - name: HF_HOME
+          value: /models
+        - name: GEMINI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: api-keys
+              key: gemini-api-key
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: api-keys
+              key: ngc-api-key
+        - name: NVIDIA_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: api-keys
+              key: nvidia-api-key
+        - name: GENMOL_URL
+          value: http://genmol-nim.bionemo-nim:8000
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+        - name: model-cache
+          mountPath: /models
+        resources:
+          limits:
+            nvidia.com/gpu: "1"
+          requests:
+            nvidia.com/gpu: "1"
+            memory: 24Gi
+            cpu: "4"
+      volumes:
+      - name: app-code
+        configMap:
+          name: dashboard-app-code
+      - name: model-cache
+        persistentVolumeClaim:
+          claimName: dashboard-models-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard-service
+  namespace: bionemo-nim
+  labels:
+    app: dashboard
+spec:
+  type: LoadBalancer
+  selector:
+    app: dashboard
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: 7860

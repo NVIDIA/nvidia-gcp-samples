@@ -277,6 +277,5 @@ Review your project for any remaining disks, IP addresses, service accounts, or 
 
 ## Notes
 
-- This sample is adapted from a hosted lab. Hosted-lab provisioning, injected variables, assessment content, private reservation APIs, and cleanup automation were removed.
 - The included `scripts/newton-gcn.tar.gz` archive contains the Isaac Lab tutorial workspace and pre-trained Franka cube policy used by the simulation steps.
 - For the latest product documentation, see the NVIDIA Isaac Sim, Isaac Lab, and Newton documentation linked above.
