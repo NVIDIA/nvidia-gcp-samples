@@ -1,0 +1,19 @@
+apiVersion: inference.networking.x-k8s.io/v1alpha2
+kind: InferenceObjective
+metadata:
+  name: gemma-4-e2b-it
+spec:
+  priority: 10
+  poolRef:
+    group: inference.networking.k8s.io
+    name: vllm-gemma-4-e2b
+---
+apiVersion: inference.networking.x-k8s.io/v1alpha2
+kind: InferenceObjective
+metadata:
+  name: nemotron-nano-4b
+spec:
+  priority: 10
+  poolRef:
+    group: inference.networking.k8s.io
+    name: vllm-nemotron-nano-4b

@@ -13,3 +13,4 @@ Samples in this use case are organized by Google Cloud service, then by NVIDIA l
 - [GKE / NIM](gke/nim)
 - [GKE / TAO and Triton](gke/tao-triton)
 - [GKE / Triton](gke/triton)
+- [GKE / vLLM Inference Gateway](gke/vllm-inference-gateway)
