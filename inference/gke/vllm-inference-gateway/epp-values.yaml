@@ -1,0 +1,35 @@
+provider:
+  gke:
+    autopilot: true
+inferenceExtension:
+  replicas: 3
+  monitoring:
+    prometheus:
+      enabled: true
+  pluginsConfigFile: plugins-v2-custom.yaml
+  pluginsCustomConfig:
+    plugins-v2-custom.yaml: |
+      apiVersion: inference.networking.x-k8s.io/v1alpha1
+      kind: EndpointPickerConfig
+      plugins:
+      - type: queue-scorer
+      - type: kv-cache-utilization-scorer
+      - type: prefix-cache-scorer
+        parameters:
+          hashBlockSize: 32
+          maxPrefixBlocksToMatch: 64
+          lruCapacityPerServer: 10986
+      - type: max-score-picker
+        parameters:
+          maxNumOfEndpoints: 1
+      - type: single-profile-handler
+      schedulingProfiles:
+      - name: default
+        plugins:
+        - pluginRef: queue-scorer
+          weight: 1
+        - pluginRef: kv-cache-utilization-scorer
+          weight: 1
+        - pluginRef: prefix-cache-scorer
+          weight: 1
+        - pluginRef: max-score-picker
