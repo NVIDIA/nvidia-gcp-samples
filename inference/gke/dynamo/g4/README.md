@@ -13,6 +13,8 @@ NVIDIA Dynamo + SGLang reference deployments on Google Cloud's `g4-standard-384`
 
 Each subdirectory contains its own deployment YAMLs, benchmark results, and README.
 
+**Weight-offload technique:** [`flextensor/`](flextensor/) — NVIDIA FlexTensor GPU↔host weight offloading (Wan2.2-T2V).
+
 ## Why NVFP4 on this hardware
 
 RTX PRO 6000 Blackwell (SM_120) has **native FP4 Tensor Cores**. NVFP4 uses these directly via FlashInfer CUTLASS NVFP4 GEMM + MoE kernels. INT4 on the same hardware runs via Compressed Tensors WNA16 Marlin, which dequantizes INT4 weights to higher precision in registers before the GEMM (no native INT4 Tensor Core path on SM_120). At identical workload, NVFP4 delivers higher throughput than INT4 on this hardware.

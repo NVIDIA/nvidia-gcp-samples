@@ -1,0 +1,67 @@
+# Serve one Wan2.2 model via Dynamo /v1/videos (frontend + FlexTensor-offload worker in one pod).
+# File discovery + TCP request plane (no etcd/NATS). Waits for registration, then POSTs /v1/videos.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: wan-ft-dynamo
+  namespace: default
+  labels: { app: wan-ft-dynamo }
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    cloud.google.com/gke-accelerator: nvidia-rtx-pro-6000
+  tolerations:
+  - { key: nvidia.com/gpu, operator: Equal, value: present, effect: NoSchedule }
+  containers:
+  - name: cmp
+    image: pytorch/pytorch:2.7.1-cuda12.8-cudnn9-devel
+    command: ["bash", "-lc"]
+    args:
+    - |
+      set -x
+      export HF_HUB_DISABLE_XET=1 HF_HOME=/mnt/model-cache/hf-wan-ft TMPDIR=/workspace/tmp XDG_CACHE_HOME=/workspace/.cache
+      export DYN_DISCOVERY_BACKEND=file DYN_REQUEST_PLANE=tcp
+      mkdir -p /workspace/tmp /workspace/.cache /mnt/model-cache/hf-wan-ft
+      ulimit -l unlimited 2>/dev/null; echo "memlock: $(ulimit -l)"
+      echo "=== model-cache contents (reuse if present) ==="; ls -la /mnt/model-cache/hf-wan-ft 2>&1 | head
+      apt-get update -qq && apt-get install -y -qq curl 2>&1 | tail -1
+      pip install --no-cache-dir ai-dynamo diffusers transformers accelerate flextensor imageio imageio-ffmpeg ftfy sentencepiece 2>&1 | tail -5
+      echo "=== start frontend ==="
+      python -m dynamo.frontend --http-port 8000 > /workspace/frontend.log 2>&1 &
+      sleep 5
+      echo "=== start worker (Wan2.2 + FlexTensor, budget 0.30, pinned) ==="
+      python /demo/wan_ft_dynamo_worker.py --models Wan-AI/Wan2.2-T2V-A14B-Diffusers --budget 0.30 > /workspace/worker.log 2>&1 &
+      echo "=== wait for /v1/videos model registration (download+load+warmup, up to ~25min) ==="
+      for i in $(seq 1 110); do
+        if curl -s localhost:8000/v1/models 2>/dev/null | grep -qi wan; then echo "MODEL REGISTERED (~$((i*15))s)"; break; fi
+        sleep 15
+      done
+      echo "--- /v1/models ---"; curl -s localhost:8000/v1/models; echo
+      echo "=== SMOKE: POST /v1/videos ==="
+      curl -s -X POST localhost:8000/v1/videos -H 'Content-Type: application/json' \
+        -d '{"model":"Wan-AI/Wan2.2-T2V-A14B-Diffusers","prompt":"a cat walking on green grass, cinematic","size":"832x480","seconds":1,"nvext":{"num_frames":17,"num_inference_steps":20,"guidance_scale":4.0}}' \
+        -o /workspace/resp.json -w "HTTP=%{http_code} time=%{time_total}s bytes=%{size_download}\n"
+      python -c "import json;r=json.load(open('/workspace/resp.json'));d=(r.get('data') or [{}])[0].get('b64_json') or '';print('SMOKE resp: id=',r.get('id'),'status=',r.get('status'),'mp4_bytes=',len(d)*3//4)" 2>&1 | tail -3
+      echo "=== worker.log tail (look for READY / GPU resident) ==="; tail -45 /workspace/worker.log
+      echo "=== frontend.log tail ==="; tail -20 /workspace/frontend.log
+      echo "=== DONE ==="
+    securityContext:
+      capabilities:
+        add: ["IPC_LOCK"]
+    resources:
+      limits:   { nvidia.com/gpu: "1", cpu: "16", memory: 240Gi, ephemeral-storage: 40Gi }
+      requests: { nvidia.com/gpu: "1", cpu: "8", memory: 100Gi, ephemeral-storage: 15Gi }
+    volumeMounts:
+    - { name: demo, mountPath: /demo }
+    - { name: work, mountPath: /workspace }
+    - { name: modelcache, mountPath: /mnt/model-cache }
+    - { name: dshm, mountPath: /dev/shm }
+  volumes:
+  - name: demo
+    configMap: { name: wan-ft-dynamo }
+  - name: work
+    emptyDir: { sizeLimit: 25Gi }
+  - name: modelcache
+    persistentVolumeClaim: { claimName: model-cache }   # provide a PVC for the HF cache, or use an emptyDir
+  - name: dshm
+    emptyDir: { medium: Memory, sizeLimit: 16Gi }

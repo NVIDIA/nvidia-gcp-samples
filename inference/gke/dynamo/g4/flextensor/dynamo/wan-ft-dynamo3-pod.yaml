@@ -1,0 +1,71 @@
+# 3 Wan2.2 models on ONE GPU via Dynamo /v1/videos (density) + in-pod benchmark.
+# 3 served names (wan-a/b/c) share the same weights, sequential-settle pinned; frontend routes each.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: wan-ft-dynamo3
+  namespace: default
+  labels: { app: wan-ft-dynamo3 }
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    cloud.google.com/gke-accelerator: nvidia-rtx-pro-6000
+  tolerations:
+  - { key: nvidia.com/gpu, operator: Equal, value: present, effect: NoSchedule }
+  containers:
+  - name: cmp
+    image: pytorch/pytorch:2.7.1-cuda12.8-cudnn9-devel
+    command: ["bash", "-lc"]
+    args:
+    - |
+      set -x
+      export HF_HUB_DISABLE_XET=1 HF_HOME=/mnt/model-cache/hf-wan-ft TMPDIR=/workspace/tmp XDG_CACHE_HOME=/workspace/.cache
+      export DYN_DISCOVERY_BACKEND=file DYN_REQUEST_PLANE=tcp
+      mkdir -p /workspace/tmp /workspace/.cache /mnt/model-cache/hf-wan-ft
+      ulimit -l unlimited 2>/dev/null; echo "memlock: $(ulimit -l)"
+      apt-get update -qq && apt-get install -y -qq curl 2>&1 | tail -1
+      pip install --no-cache-dir ai-dynamo diffusers transformers accelerate flextensor imageio imageio-ffmpeg ftfy sentencepiece aiohttp 2>&1 | tail -4
+      echo "=== start frontend ==="
+      python -m dynamo.frontend --http-port 8000 > /workspace/frontend.log 2>&1 &
+      sleep 5
+      echo "=== start 3-replica worker (wan-a/b/c, shared weights, budget 0.08 pinned, sequential settle) ==="
+      python /demo/wan_ft_dynamo_worker.py --models wan-a,wan-b,wan-c --model-path Wan-AI/Wan2.2-T2V-A14B-Diffusers --budget 0.08 > /workspace/worker.log 2>&1 &
+      echo "=== wait for 3 models registered (3x load+settle, up to ~30min) ==="
+      for i in $(seq 1 130); do
+        n=$(curl -s localhost:8000/v1/models 2>/dev/null | python -c "import sys,json;print(len(json.load(sys.stdin).get('data',[])))" 2>/dev/null || echo 0)
+        echo "  registered=$n (~$((i*15))s)"; [ "$n" = "3" ] && { echo "ALL 3 REGISTERED"; break; }
+        sleep 15
+      done
+      echo "--- /v1/models ---"; curl -s localhost:8000/v1/models; echo
+      echo "=== SMOKE each replica ==="
+      for m in wan-a wan-b wan-c; do
+        curl -s -X POST localhost:8000/v1/videos -H 'Content-Type: application/json' \
+          -d "{\"model\":\"$m\",\"prompt\":\"a cat walking, cinematic\",\"size\":\"832x480\",\"seconds\":1,\"nvext\":{\"num_frames\":17,\"num_inference_steps\":20,\"guidance_scale\":4.0}}" \
+          -o /workspace/r_$m.json -w "$m HTTP=%{http_code} time=%{time_total}s bytes=%{size_download}\n"
+      done
+      echo "=== BENCH: concurrency=1 (serial, 3 reqs round-robin) ==="
+      python /demo/bench_videos.py --url http://localhost:8000 --models wan-a,wan-b,wan-c --concurrency 1 --requests 3 2>&1 | tail -12
+      echo "=== BENCH: concurrency=3 (all 3 replicas hit at once, 6 reqs) ==="
+      python /demo/bench_videos.py --url http://localhost:8000 --models wan-a,wan-b,wan-c --concurrency 3 --requests 6 2>&1 | tail -12
+      echo "=== DENSITY / RSS (worker) ==="; grep -E "READY served|ALL .* REPLICAS LOADED" /workspace/worker.log | tail -8
+      echo "=== DONE ==="
+    securityContext:
+      capabilities:
+        add: ["IPC_LOCK"]
+    resources:
+      limits:   { nvidia.com/gpu: "1", cpu: "16", memory: 340Gi, ephemeral-storage: 40Gi }
+      requests: { nvidia.com/gpu: "1", cpu: "8", memory: 100Gi, ephemeral-storage: 15Gi }
+    volumeMounts:
+    - { name: demo, mountPath: /demo }
+    - { name: work, mountPath: /workspace }
+    - { name: modelcache, mountPath: /mnt/model-cache }
+    - { name: dshm, mountPath: /dev/shm }
+  volumes:
+  - name: demo
+    configMap: { name: wan-ft-dynamo3 }
+  - name: work
+    emptyDir: { sizeLimit: 25Gi }
+  - name: modelcache
+    persistentVolumeClaim: { claimName: model-cache }   # provide a PVC for the HF cache, or use an emptyDir
+  - name: dshm
+    emptyDir: { medium: Memory, sizeLimit: 16Gi }

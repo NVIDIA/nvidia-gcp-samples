@@ -1,0 +1,42 @@
+# Wan2.2 FlexTensor benefit benchmark — runs as the pod's main command; results via `kubectl logs`.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: wan22-bench
+  namespace: default
+  labels: { app: wan22-bench }
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    cloud.google.com/gke-accelerator: nvidia-rtx-pro-6000
+  tolerations:
+  - { key: nvidia.com/gpu, operator: Equal, value: present, effect: NoSchedule }
+  containers:
+  - name: bench
+    image: pytorch/pytorch:2.7.1-cuda12.8-cudnn9-devel
+    command: ["bash", "-lc"]
+    args:
+    - |
+      set -x
+      apt-get update -qq && apt-get install -y -qq git 2>&1 | tail -1
+      pip install --no-cache-dir diffusers transformers accelerate ftfy sentencepiece imageio flextensor 2>&1 | tail -5
+      python -c "import diffusers; print('diffusers', diffusers.__version__)"
+      python -c "from diffusers import WanPipeline; print('WanPipeline OK from release')" 2>/dev/null || { echo "release lacks Wan2.2 -> installing diffusers main"; pip install --no-cache-dir -U "git+https://github.com/huggingface/diffusers" 2>&1 | tail -3; }
+      python /bench/wan22_bench.py
+      echo "=== BENCH DONE ==="
+    env:
+    - { name: HF_HOME, value: /workspace/.hf }
+    resources:
+      limits:   { nvidia.com/gpu: "1", cpu: "16", memory: 300Gi }
+      requests: { nvidia.com/gpu: "1", cpu: "8", memory: 160Gi }
+    volumeMounts:
+    - { name: bench, mountPath: /bench }
+    - { name: work, mountPath: /workspace }
+    - { name: dshm, mountPath: /dev/shm }
+  volumes:
+  - name: bench
+    configMap: { name: wan22-bench }
+  - name: work
+    emptyDir: { sizeLimit: 130Gi }
+  - name: dshm
+    emptyDir: { medium: Memory, sizeLimit: 32Gi }

@@ -1,0 +1,50 @@
+# 3 Wan2.2 models, PINNED offload, sequential-settle load pattern.
+# Loads one model at a time and drives it to INFERENCE (settle) before loading the next, so the
+# per-model from_pretrained transients don't stack and all 3 fit on the node.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: wan3-settle
+  namespace: default
+  labels: { app: wan3-settle }
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    cloud.google.com/gke-accelerator: nvidia-rtx-pro-6000
+  tolerations:
+  - { key: nvidia.com/gpu, operator: Equal, value: present, effect: NoSchedule }
+  containers:
+  - name: cmp
+    image: pytorch/pytorch:2.7.1-cuda12.8-cudnn9-devel
+    command: ["bash", "-lc"]
+    args:
+    - |
+      set -x
+      export HF_HUB_DISABLE_XET=1 HF_HOME=/workspace/.hf TMPDIR=/workspace/tmp XDG_CACHE_HOME=/workspace/.cache
+      mkdir -p /workspace/tmp /workspace/.cache /workspace/.hf
+      ulimit -l unlimited 2>/dev/null; echo "memlock now: $(ulimit -l)"
+      apt-get update -qq && apt-get install -y -qq git 2>&1 | tail -1
+      pip install --no-cache-dir diffusers transformers accelerate ftfy sentencepiece imageio flextensor 2>&1 | tail -4
+      echo "=== pinning sanity check: page-lock 40 GB via IPC_LOCK ==="
+      python -c "import torch; b=torch.empty(40*1024**3,dtype=torch.uint8).pin_memory(); print('PINNED 40 GB OK'); del b" 2>&1 | tail -4
+      python /demo/wan3_settle.py
+      echo "=== DONE ==="
+    securityContext:
+      capabilities:
+        add: ["IPC_LOCK"]
+    env:
+    - { name: HF_HOME, value: /workspace/.hf }
+    resources:
+      limits:   { nvidia.com/gpu: "1", cpu: "16", memory: 340Gi }
+      requests: { nvidia.com/gpu: "1", cpu: "8", memory: 200Gi }
+    volumeMounts:
+    - { name: demo, mountPath: /demo }
+    - { name: work, mountPath: /workspace }
+    - { name: dshm, mountPath: /dev/shm }
+  volumes:
+  - name: demo
+    configMap: { name: wan3-settle }
+  - name: work
+    emptyDir: { sizeLimit: 130Gi }
+  - name: dshm
+    emptyDir: { medium: Memory, sizeLimit: 32Gi }
