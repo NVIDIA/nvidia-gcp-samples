@@ -1,0 +1,127 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-gemma-4-e2b
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-gemma-4-e2b
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: vllm-gemma-4-e2b
+    spec:
+      serviceAccountName: default
+      containers:
+      - name: inference-server
+        image: vllm/vllm-openai:latest
+        args:
+        - --model=google/gemma-4-E2B-it
+        - --tensor-parallel-size=1
+        - --max-model-len=8192
+        - --gpu-memory-utilization=0.85
+        - '--limit-mm-per-prompt={"image":0,"audio":0}'
+        env:
+        - name: HUGGING_FACE_HUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-secret
+              key: hf_api_token
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        resources:
+          requests:
+            cpu: "4"
+            memory: 32Gi
+            ephemeral-storage: 10Gi
+            nvidia.com/gpu: "1"
+          limits:
+            cpu: "4"
+            memory: 32Gi
+            ephemeral-storage: 10Gi
+            nvidia.com/gpu: "1"
+        volumeMounts:
+        - mountPath: /dev/shm
+          name: dshm
+        lifecycle:
+          preStop:
+            sleep:
+              seconds: 30
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          periodSeconds: 1
+          successThreshold: 1
+          failureThreshold: 5
+          timeoutSeconds: 1
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          periodSeconds: 1
+          successThreshold: 1
+          failureThreshold: 1
+          timeoutSeconds: 1
+        startupProbe:
+          failureThreshold: 3600
+          initialDelaySeconds: 2
+          periodSeconds: 1
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-rtx-pro-6000
+        cloud.google.com/gke-gpu-partition-size: 2g.48gb
+        cloud.google.com/gke-accelerator-count: "1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-gemma-4-e2b
+spec:
+  selector:
+    app: vllm-gemma-4-e2b
+  type: ClusterIP
+  ports:
+  - protocol: TCP
+    port: 8000
+    targetPort: 8000
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: vllm-gemma-4-e2b
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vllm-gemma-4-e2b
+  minReplicas: 1
+  maxReplicas: 1
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 60
+  metrics:
+  - type: External
+    external:
+      metric:
+        name: prometheus.googleapis.com|inference_pool_average_kv_cache_utilization|gauge
+        selector:
+          matchLabels:
+            metric.labels.name: vllm-gemma-4-e2b
+      target:
+        type: AverageValue
+        averageValue: 10m
