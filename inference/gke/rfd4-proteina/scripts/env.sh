@@ -11,6 +11,6 @@ export IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${NAME}/api:sample"
 export PROJECT_NUMBER="${PROJECT_NUMBER:-$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')}"
 export BUILD_SA="${BUILD_SA:-${PROJECT_NUMBER}-compute@developer.gserviceaccount.com}"
 export NODE_SA="${NODE_SA:-${PROJECT_NUMBER}-compute@developer.gserviceaccount.com}"
-export RFD4_COMMIT="${RFD4_COMMIT:-9c6e39b709b39e0a6125042967bd4ac6f1d211ee}"
+export RFD4_COMMIT="${RFD4_COMMIT:-d62d11ca2e048e4bb697dd5ca89082bf3f261741}"
 
 export RFD4_REPO="${RFD4_REPO:-https://github.com/RosettaCommons/RFD4-Proteina.git}"
