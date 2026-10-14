@@ -1,0 +1,13 @@
+steps:
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args: [-c, 'gcloud storage cp "${_SOURCE}" /tmp/source.tgz && tar -xzf /tmp/source.tgz -C /workspace']
+  - name: gcr.io/cloud-builders/docker
+    env: [DOCKER_BUILDKIT=1]
+    args: [build, --target, api, -f, upstream/Dockerfile, -t, '${_IMAGE}', upstream]
+images: ['${_IMAGE}']
+timeout: 3600s
+options:
+  machineType: E2_HIGHCPU_8
+  diskSizeGb: 200
+  logging: CLOUD_LOGGING_ONLY
