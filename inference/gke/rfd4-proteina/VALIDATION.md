@@ -5,7 +5,7 @@ Validated on 2026-10-14 with an NVIDIA A100-SXM4 40 GB on GKE.
 ## Current upstream integration
 
 The recipe clones `RosettaCommons/RFD4-Proteina` and pins commit
-`632c8f1ebea2ae20439e126ef010294f12981ee0` from
+`f3061df1166d51e7281fe7e637c6e6400fca4b83` from
 [upstream PR #16](https://github.com/RosettaCommons/RFD4-Proteina/pull/16).
 Portable serving code and Kubernetes manifests live upstream. This recipe adds
 Cloud Build, Google Cloud provisioning, and a GKE overlay.
