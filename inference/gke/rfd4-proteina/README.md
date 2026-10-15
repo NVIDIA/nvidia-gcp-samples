@@ -8,7 +8,6 @@ Deploy a persistent protein-design API on one NVIDIA A100 GPU. The server loads 
 - `gcloud`, `kubectl`, Git, Python 3, and `rg`. Cloud Build builds the image; local Docker is optional.
 - Permissions to create a VPC/subnet, GKE cluster, bucket, image repository, and builds; permission to enable missing APIs and act as build/node service accounts.
 - Existing build/node service accounts. By default scripts use the project's Compute Engine default service account. The build account needs log-writing, staging-object reading, and Artifact Registry writing permissions; the node account needs registry reading and GKE logging/monitoring permissions. An administrator must grant missing roles. Set `BUILD_SA` and `NODE_SA` to use dedicated accounts. Scripts do not change IAM policies.
-- Access to `RosettaCommons/RFD4-Proteina` and permission to use its code and model checkpoints under the upstream terms. Authenticate Git if the repository requires it.
 
 Run commands from this sample directory. GPU nodes remain billable until cleanup.
 
