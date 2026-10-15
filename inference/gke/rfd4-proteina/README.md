@@ -1,6 +1,6 @@
 # RFD4-Proteína API on GKE
 
-Deploy a persistent protein-design API on one NVIDIA A100 GPU. The server loads the model once, queues requests, and saves checkpoints, status, and generated CIFs on a persistent disk. Inference runs inside a **Deployment**, with one request at a time; no Kubernetes Jobs are needed.
+Deploy a persistent protein-design API on one NVIDIA A100 GPU. The server loads the model once, queues requests, and saves checkpoints, status, and generated CIFs on a persistent disk.
 
 ## Prerequisites
 
