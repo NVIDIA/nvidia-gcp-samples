@@ -1,0 +1,139 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-nemotron-nano-4b
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-nemotron-nano-4b
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: vllm-nemotron-nano-4b
+    spec:
+      serviceAccountName: default
+      containers:
+      - name: inference-server
+        image: vllm/vllm-openai:latest
+        args:
+        - --model=nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16
+        - --tensor-parallel-size=1
+        - --max-model-len=8192
+        - --gpu-memory-utilization=0.85
+        - --max-num-seqs=8
+        - --trust-remote-code
+        - --mamba_ssm_cache_dtype=float32
+        env:
+        - name: HUGGING_FACE_HUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-secret
+              key: hf_api_token
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        resources:
+          requests:
+            cpu: "4"
+            memory: 32Gi
+            ephemeral-storage: 10Gi
+            nvidia.com/gpu: "1"
+          limits:
+            cpu: "4"
+            memory: 32Gi
+            ephemeral-storage: 10Gi
+            nvidia.com/gpu: "1"
+        volumeMounts:
+        - mountPath: /dev/shm
+          name: dshm
+        lifecycle:
+          preStop:
+            sleep:
+              seconds: 30
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          periodSeconds: 1
+          successThreshold: 1
+          failureThreshold: 5
+          timeoutSeconds: 1
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          periodSeconds: 1
+          successThreshold: 1
+          failureThreshold: 1
+          timeoutSeconds: 1
+        startupProbe:
+          failureThreshold: 3600
+          initialDelaySeconds: 2
+          periodSeconds: 1
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-rtx-pro-6000
+        cloud.google.com/gke-gpu-partition-size: 2g.48gb
+        cloud.google.com/gke-accelerator-count: "1"
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - vllm-gemma-4-e2b
+            topologyKey: kubernetes.io/hostname
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-nemotron-nano-4b
+spec:
+  selector:
+    app: vllm-nemotron-nano-4b
+  type: ClusterIP
+  ports:
+  - protocol: TCP
+    port: 8000
+    targetPort: 8000
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: vllm-nemotron-nano-4b
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vllm-nemotron-nano-4b
+  minReplicas: 1
+  maxReplicas: 1
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 60
+  metrics:
+  - type: External
+    external:
+      metric:
+        name: prometheus.googleapis.com|inference_pool_average_kv_cache_utilization|gauge
+        selector:
+          matchLabels:
+            metric.labels.name: vllm-nemotron-nano-4b
+      target:
+        type: AverageValue
+        averageValue: 10m

@@ -1,0 +1,41 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: vllm-gemma-4-e2b-route
+spec:
+  parentRefs:
+  - name: vllm-xlb
+  rules:
+  - matches:
+    - headers:
+      - type: Exact
+        name: X-Gateway-Model-Name
+        value: google/gemma-4-E2B-it
+      path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: vllm-gemma-4-e2b
+      group: inference.networking.k8s.io
+      kind: InferencePool
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: vllm-nemotron-nano-4b-route
+spec:
+  parentRefs:
+  - name: vllm-xlb
+  rules:
+  - matches:
+    - headers:
+      - type: Exact
+        name: X-Gateway-Model-Name
+        value: nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16
+      path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: vllm-nemotron-nano-4b
+      group: inference.networking.k8s.io
+      kind: InferencePool
