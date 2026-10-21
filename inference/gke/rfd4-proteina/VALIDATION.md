@@ -15,6 +15,17 @@ Local checks passed on 2026-10-21:
 
 This revision requires a new container build and GPU inference run before it can be called end-to-end validated. Previous results below used different code, dependencies, and checkpoints. No GCP resources were provisioned for this update.
 
+## Live E2E attempt, 2026-10-21
+
+**BLOCKED by project policies before image build and GPU deployment.** A fresh recipe checkout cloned and pinned upstream PR #52 successfully. Preparation succeeded using the documented existing-service-account option; the caller cannot create service accounts or modify IAM in the test project.
+
+- Cloud Build source staging failed with HTTP 403: an explicit IAM deny blocks `serviceusage.services.use` for the caller.
+- Fresh GKE Autopilot provisioning entered `ERROR`: `constraints/gcp.restrictServiceUsage` disallows `dns.googleapis.com`, preventing creation of the cluster DNS zone. Cloud DNS was already enabled; enabling the API alone does not override this policy.
+- Four CPU API tests, Ruff lint/format, and Kubernetes rendering passed against the fresh upstream checkout. No image build, GPU inference, artifact persistence, or live Swagger UI validation completed in this attempt.
+- Cleanup completed: the test-owned cluster, network, subnet, and empty image repository were deleted. Follow-up inventories found no matching cluster, VM, disk, network, subnet, registry, firewall, or address resources. The pre-existing shared staging bucket and service account were preserved. The workload/PVC cleanup path was not exercised because deployment never reached that stage.
+
+An administrator must resolve both policy restrictions before the documented E2E workflow can proceed. The recipe now explicitly lists Cloud DNS in API preparation and documents the policy prerequisites.
+
 ## Historical Autopilot validation
 
 The following results were reported in [fork PR #1](https://github.com/juanpabloguerra16/nvidia-gcp-samples/pull/1), merged before this public-source update.

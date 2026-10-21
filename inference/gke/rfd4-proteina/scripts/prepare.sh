@@ -6,7 +6,7 @@ source scripts/env.sh
 # Enable only missing APIs in a single batched call, so pre-enabled projects need no enable permission.
 enabled=$(gcloud services list --enabled --project="$PROJECT_ID" --format='value(config.name)')
 missing_apis=()
-for api in container compute artifactregistry cloudbuild storage iam iamcredentials logging monitoring; do
+for api in container compute artifactregistry cloudbuild storage iam iamcredentials logging monitoring dns; do
     if ! echo "$enabled" | grep -q "^${api}\.googleapis\.com$"; then
         missing_apis+=("${api}.googleapis.com")
     fi

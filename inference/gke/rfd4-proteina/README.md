@@ -6,6 +6,7 @@ Deploy a persistent protein-design API on one NVIDIA A100 GPU on GKE Autopilot. 
 
 - A billing-enabled Google Cloud project and quota for one A100 40 GB in your chosen region.
 - `gcloud` (with the `beta` component installed for Cloud Logging build stream), `kubectl`, Git, and Python 3. Cloud Build builds the image; local Docker is optional.
+- Project policies must permit Cloud Build source staging (`serviceusage.services.use`) and Cloud DNS (`dns.googleapis.com`), which Autopilot uses during cluster creation.
 - Permissions to enable APIs, create networking, GKE, storage, registry, build, and service-account resources, update project/bucket/repository IAM, and act as the build/node service accounts. Alternatively, have an administrator prepare existing accounts and set `BUILD_SA` and `NODE_SA` before sourcing the environment.
 
 Run commands from this sample directory. GPU pods remain billable until the workload or cluster is deleted.
