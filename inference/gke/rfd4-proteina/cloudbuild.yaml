@@ -1,10 +1,7 @@
 steps:
   - name: gcr.io/cloud-builders/docker
     env: [DOCKER_BUILDKIT=1]
-    args: [build, -f, upstream/Dockerfile, -t, 'rfd4-runtime:build', upstream]
-  - name: gcr.io/cloud-builders/docker
-    env: [DOCKER_BUILDKIT=1]
-    args: [build, -f, Dockerfile.api, -t, '${_IMAGE}', .]
+    args: [build, --target, api, -f, Dockerfile, -t, '${_IMAGE}', .]
 images: ['${_IMAGE}']
 timeout: 3600s
 options:

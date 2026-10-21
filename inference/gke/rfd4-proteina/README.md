@@ -36,9 +36,11 @@ bash scripts/build.sh
 gcloud beta builds log "$(cat .build/build-id)" --stream --project="$PROJECT_ID"
 ```
 
-Confirm the build finishes with `SUCCESS`. Cloud Build builds the public repository's Dockerfile, then adds this sample's FastAPI server using `Dockerfile.api`. It stages a clean archive of the pinned upstream commit and the sample API files. The image uses the upstream default CUDA 13 profile.
+Confirm the build finishes with `SUCCESS`. Cloud Build builds the upstream root Dockerfile's `api` target from a clean archive of the pinned commit. The image uses the upstream default CUDA 13 profile.
 
-The recipe pins public commit `59e5abb1baa46bb10901812b875b738a15aa2d77`. The public repository provides the model and CLI image; `api/`, `Dockerfile.api`, and `kubernetes/` in this sample provide HTTP serving and deployment. Model weights come from [nvidia/RFD4-Proteina on Hugging Face](https://huggingface.co/nvidia/RFD4-Proteina), using the model revision selected in upstream `configs/inference.yaml`.
+The recipe pins `89cc8ef7c932f14cce4d141f44b598b2d322a7ec` from [RosettaCommons/RFD4-Proteina PR #52](https://github.com/RosettaCommons/RFD4-Proteina/pull/52), which adds the portable FastAPI server, API image target, and Kubernetes base to the public release. This commit can be built before merge; update the pin to a reviewed main-branch commit after merge. Model weights come from [nvidia/RFD4-Proteina on Hugging Face](https://huggingface.co/nvidia/RFD4-Proteina), using the revision selected in upstream `configs/inference.yaml`.
+
+This sample contains Google Cloud provisioning, Cloud Build configuration, and the Autopilot overlay. See `upstream/deploy/README.md` for the portable Docker/Kubernetes guide.
 
 ## 3. Create GKE Autopilot cluster and deploy
 
@@ -65,7 +67,7 @@ In another terminal, from this sample directory:
 ```bash
 curl -fsS http://localhost:8000/health/ready
 curl -fsS -X POST http://localhost:8000/v1/designs \
-  -F file=@api/examples/monomer-short.cif \
+  -F file=@upstream/deploy/api/examples/monomer-short.cif \
   -F num_replicates=1 -F seed=42
 ```
 
@@ -84,12 +86,12 @@ export DOWNLOAD_PATH="PATH_RETURNED_BY_RESULTS"
 curl -fsS "http://localhost:8000$DOWNLOAD_PATH" -o design.cif
 ```
 
-The included input in `api/examples/` is a decompressed copy of the pinned upstream short-monomer example.
+The input in `upstream/deploy/api/examples/` is a plain CIF version of the upstream short-monomer benchmark.
 
 Interactive API documentation is at `http://localhost:8000/docs`. Or run the automated test to generate two designs, download CIFs, reject invalid input, and verify checkpoints loaded once:
 
 ```bash
-python3 api/smoke_test.py
+python3 upstream/deploy/api/smoke_test.py
 ```
 
 To check persistence, restart the pod, then stop/restart port forwarding and retrieve a previous request's status and results:

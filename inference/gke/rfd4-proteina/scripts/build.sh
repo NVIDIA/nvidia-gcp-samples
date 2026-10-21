@@ -9,19 +9,16 @@ fi
 if ! git -C "$RFD4_SOURCE" cat-file -e "${RFD4_COMMIT}^{commit}" 2>/dev/null; then
     git -C "$RFD4_SOURCE" fetch "$RFD4_REPO" "$RFD4_COMMIT"
 fi
-if ! git -C "$RFD4_SOURCE" cat-file -e "${RFD4_COMMIT}:Dockerfile"; then
-    echo "The selected upstream commit must include its public Dockerfile." >&2
-    exit 1
-fi
-# Build only committed upstream files and the sample's serving layer.
+for file in Dockerfile deploy/api/app/api.py deploy/kubernetes/kustomization.yaml; do
+    if ! git -C "$RFD4_SOURCE" cat-file -e "${RFD4_COMMIT}:${file}"; then
+        echo "The pinned upstream commit must include the API and Kubernetes assets." >&2
+        exit 1
+    fi
+done
+# Stage only committed upstream files for the image build.
 rm -rf .build/context
-mkdir -p .build/context/upstream
-git -C "$RFD4_SOURCE" archive "$RFD4_COMMIT" | tar -x -C .build/context/upstream
-cp Dockerfile.api .build/context/
-mkdir -p .build/context/api
-cp -R api/app api/examples .build/context/api/
-cp api/requirements.txt .build/context/api/
-find .build/context/api -type d -name __pycache__ -prune -exec rm -rf {} +
+mkdir -p .build/context
+git -C "$RFD4_SOURCE" archive "$RFD4_COMMIT" | tar -x -C .build/context
 gcloud builds submit .build/context \
     --project="$PROJECT_ID" \
     --config=cloudbuild.yaml \

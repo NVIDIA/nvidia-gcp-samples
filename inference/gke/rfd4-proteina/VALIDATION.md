@@ -2,7 +2,7 @@
 
 ## Current public-source integration
 
-Pinned source: `59e5abb1baa46bb10901812b875b738a15aa2d77` from the public RosettaCommons/RFD4-Proteina repository. The upstream Dockerfile builds the model CLI; this sample adds its own API layer. The runner delegates Hugging Face loading and per-request configuration to upstream inference helpers.
+Pinned source: `89cc8ef7c932f14cce4d141f44b598b2d322a7ec` from the public RosettaCommons/RFD4-Proteina repository. [Upstream PR #52](https://github.com/RosettaCommons/RFD4-Proteina/pull/52) adds the API Docker target, serving code, and portable Kubernetes manifests to the public release. The sample builds that target and overlays those manifests. The runner delegates Hugging Face loading and per-request configuration to upstream inference helpers.
 
 Local checks passed on 2026-10-21:
 
@@ -10,7 +10,7 @@ Local checks passed on 2026-10-21:
 - Ruff lint/format checks and shell syntax checks for all six scripts.
 - Public upstream Hydra configuration composes with the wrapper's overrides; helper signatures accept the resident-model reuse call.
 - The pinned Hugging Face model revision is public and ungated.
-- Build/deploy scripts ran with mocked cloud commands: clean upstream source staging, API build context, custom namespace, immutable image digest, regional StorageClass and its two replica zones were verified. These checks did not submit a build or contact a cluster.
+- Build/deploy scripts ran with mocked cloud commands: clean upstream source staging, upstream API build context, custom namespace, immutable image digest, regional StorageClass and its two replica zones were verified. These checks did not submit a build or contact a cluster.
 - Source-only sample assumption scan and whitespace checks passed.
 
 This revision requires a new container build and GPU inference run before it can be called end-to-end validated. Previous results below used different code, dependencies, and checkpoints. No GCP resources were provisioned for this update.
