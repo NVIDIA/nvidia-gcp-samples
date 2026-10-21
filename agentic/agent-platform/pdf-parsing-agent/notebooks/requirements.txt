@@ -1,6 +1,7 @@
 google-adk
 google-cloud-aiplatform
 google-auth
+nest-asyncio
 openai
 pymupdf
 pillow

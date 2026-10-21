@@ -16,7 +16,7 @@ The included notebook asks financial questions about an NVIDIA quarterly present
 - Permissions to enable APIs, deploy Vertex AI / Agent Platform Model Garden models, create endpoints, and create Workbench instances if you use Vertex AI Workbench.
 - GPU quota and capacity for:
   - Gemma 3: `g4-standard-48` with `1 x NVIDIA_RTX_PRO_6000`.
-  - Nemotron Nano 12B VL: `g4-standard-96` with `2 x NVIDIA_RTX_PRO_6000`.
+  - Nemotron Nano 12B VL FP8: `g2-standard-12` with `1 x NVIDIA_L4`.
 - Google Cloud SDK installed locally, or access to Cloud Shell.
 - Python 3.10 or newer if you run the notebook outside Workbench.
 - A local clone of this repository.
@@ -69,18 +69,48 @@ gemma-3-12b-it-mg-one-click-deploy
 
 ## Deploy Nemotron Nano 12B VL
 
-1. In **Agent Platform > Model Garden**, search for **Nemotron**.
-2. Select **Nvidia Nemotron Nano v2 12B VL**.
+This recipe deploys the `nvidia/NVIDIA-Nemotron-Nano-12B-v2-VL-FP8` Hugging Face checkpoint through Agent Platform Model Garden.
 
-   ![Select Nemotron Nano VLM](images/select_nemotron_vl.png)
+1. Create a Hugging Face access token with permission to read the model checkpoint.
+2. In the Google Cloud console, open **Agent Platform > Model Garden**, then click **Deploy model**.
 
-3. Accept the model terms if prompted.
-4. Deploy the model to an Agent Platform endpoint using `2 x NVIDIA_RTX_PRO_6000`, which maps to `g4-standard-96`.
+   ![Select Deploy model](images/step1_select_deploy_model.png)
 
-You can deploy from the console, or use the API:
+3. Under **Deploy model with default weights**, select **Agent Platform**.
+
+   ![Select Agent Platform](images/step_2_select_agent_platform.png)
+
+4. In **Select model**, search for `nvidia/NVIDIA-Nemotron-Nano-12B-v2-VL-FP8`, then paste your Hugging Face access token.
+
+   ![Search for Nemotron model](images/step_3_search_for_fp8_model.png)
+
+5. Review the default deployment settings, then click **Edit settings**.
+
+   ![Click Edit settings](images/step4_click_edit_settings.png)
+
+6. Set the deployment options:
+   - **Region:** `us-central1`
+   - **Endpoint name:** `nvidia-nemotron-nano-12b-v2-vl-fp8-mg-one-click-deploy`
+   - **Machine spec:** `vLLM multi-modal 2k context (1 NVIDIA_L4; g2-standard-12)`
+   - **Reservation type:** `No reservation`
+   - **VM provisioning model:** `Standard`
+
+   Click **Deploy**.
+
+   ![Deploy Nemotron FP8](images/step_5_change_machine_spec_to_g2-standard-12_then_click_deploy.png)
+
+Wait until the endpoint is ready, then record the Nemotron endpoint display name. The notebook default is:
+
+```text
+nvidia-nemotron-nano-12b-v2-vl-fp8-mg-one-click-deploy
+```
+
+You can also deploy the same checkpoint with the Agent Platform deploy API:
+
 
 ```bash
-export MODEL="publishers/nvidia/models/nemotron-nano-12b-v2-vl@1.5.0"
+export MODEL="nvidia/NVIDIA-Nemotron-Nano-12B-v2-VL-FP8"
+export HF_TOKEN="<YOUR_HUGGING_FACE_ACCESS_TOKEN>"
 export ENDPOINT="${LOCATION}-aiplatform.googleapis.com"
 
 curl \
@@ -90,26 +120,25 @@ curl \
   -H "X-Goog-User-Project: ${PROJECT_ID}" \
   "https://${ENDPOINT}/v1beta1/projects/${PROJECT_ID}/locations/${LOCATION}:deploy" \
   -d '{
-    "publisher_model_name": "'"${MODEL}"'",
+    "hugging_face_model_id": "'"${MODEL}"'",
+    "hugging_face_access_token": "'"${HF_TOKEN}"'",
+    "model_config": {
+      "accept_eula": true
+    },
     "endpoint_config": {
+      "endpoint_display_name": "nvidia-nemotron-nano-12b-v2-vl-fp8-mg-one-click-deploy",
       "dedicated_endpoint_disabled": true
     },
     "deploy_config": {
       "dedicated_resources": {
         "machine_spec": {
-          "machine_type": "g4-standard-96",
-          "accelerator_type": "NVIDIA_RTX_PRO_6000",
-          "accelerator_count": 2
+          "machine_type": "g2-standard-12",
+          "accelerator_type": "NVIDIA_L4",
+          "accelerator_count": 1
         }
       }
     }
   }'
-```
-
-Wait until the endpoint is ready, then record the Nemotron endpoint display name. The notebook default is:
-
-```text
-nvidia_nemotron-nano-12b-v2-vl_1_5_0-mg-one-click-deploy
 ```
 
 ## Run the Notebook
@@ -165,7 +194,7 @@ jupyter notebook adk_gemma_nemotron_pdf_parsing_agent.ipynb
    ```python
    LOCATION = "us-central1"
    GEMMA_ENDPOINT_NAME = "gemma-3-12b-it-mg-one-click-deploy"
-   VLM_ENDPOINT_NAME = "nvidia_nemotron-nano-12b-v2-vl_1_5_0-mg-one-click-deploy"
+   VLM_ENDPOINT_NAME = "nvidia-nemotron-nano-12b-v2-vl-fp8-mg-one-click-deploy"
    ```
 
 4. Continue running the notebook cells to:
