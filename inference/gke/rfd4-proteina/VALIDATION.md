@@ -1,4 +1,23 @@
-# End-to-end validation
+# Validation
+
+## Current public-source integration
+
+Pinned source: `59e5abb1baa46bb10901812b875b738a15aa2d77` from the public RosettaCommons/RFD4-Proteina repository. The upstream Dockerfile builds the model CLI; this sample adds its own API layer. The runner delegates Hugging Face loading and per-request configuration to upstream inference helpers.
+
+Local checks passed on 2026-10-21:
+
+- Four CPU-only HTTP API tests: resident worker serialization, persistence, error recovery, queue backpressure, startup health, and artifact-path restrictions.
+- Ruff lint/format checks and shell syntax checks for all six scripts.
+- Public upstream Hydra configuration composes with the wrapper's overrides; helper signatures accept the resident-model reuse call.
+- The pinned Hugging Face model revision is public and ungated.
+- Build/deploy scripts ran with mocked cloud commands: clean upstream source staging, API build context, custom namespace, immutable image digest, regional StorageClass and its two replica zones were verified. These checks did not submit a build or contact a cluster.
+- Source-only sample assumption scan and whitespace checks passed.
+
+This revision requires a new container build and GPU inference run before it can be called end-to-end validated. Previous results below used different code, dependencies, and checkpoints. No GCP resources were provisioned for this update.
+
+## Historical Autopilot validation
+
+The following results were reported in [fork PR #1](https://github.com/juanpabloguerra16/nvidia-gcp-samples/pull/1), merged before this public-source update.
 
 **PASS — GPU API workflow on GKE Autopilot, 2026-10-20.** Built the pinned
 upstream source through this recipe using the default Cloud Build staging

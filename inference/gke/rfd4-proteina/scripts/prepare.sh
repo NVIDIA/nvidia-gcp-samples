@@ -20,6 +20,13 @@ if ! gcloud artifacts repositories describe "$NAME" --location="$REGION" --proje
         --location="$REGION" --project="$PROJECT_ID"
 fi
 
+# Cloud Build's default source bucket is shared and retained by cleanup.
+staging_bucket="${PROJECT_ID}_cloudbuild"
+if ! gcloud storage buckets describe "gs://${staging_bucket}" >/dev/null 2>&1; then
+    gcloud storage buckets create "gs://${staging_bucket}" --project="$PROJECT_ID" \
+        --location="$REGION" --uniform-bucket-level-access
+fi
+
 # Newly created service accounts can take a few seconds to propagate in IAM
 # before projects.add-iam-policy-binding recognizes them.
 bind_role() {
@@ -41,9 +48,12 @@ if [[ "$BUILD_SA" == "${NAME}-build@${PROJECT_ID}.iam.gserviceaccount.com" ]]; t
         gcloud iam service-accounts create "${NAME}-build" \
             --display-name="RFD4-Proteina Cloud Build SA" --project="$PROJECT_ID"
     fi
-    for role in roles/logging.logWriter roles/storage.admin roles/artifactregistry.writer; do
-        bind_role "$BUILD_SA" "$role"
-    done
+    bind_role "$BUILD_SA" roles/logging.logWriter
+    gcloud storage buckets add-iam-policy-binding "gs://${staging_bucket}" \
+        --member="serviceAccount:${BUILD_SA}" --role=roles/storage.objectViewer --quiet >/dev/null
+    gcloud artifacts repositories add-iam-policy-binding "$NAME" \
+        --location="$REGION" --project="$PROJECT_ID" \
+        --member="serviceAccount:${BUILD_SA}" --role=roles/artifactregistry.writer --quiet >/dev/null
 fi
 
 if [[ "$NODE_SA" == "${NAME}-node@${PROJECT_ID}.iam.gserviceaccount.com" ]]; then

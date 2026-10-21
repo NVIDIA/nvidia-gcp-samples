@@ -6,7 +6,7 @@ Deploy a persistent protein-design API on one NVIDIA A100 GPU on GKE Autopilot. 
 
 - A billing-enabled Google Cloud project and quota for one A100 40 GB in your chosen region.
 - `gcloud` (with the `beta` component installed for Cloud Logging build stream), `kubectl`, Git, and Python 3. Cloud Build builds the image; local Docker is optional.
-- Permissions to create a VPC/subnet, GKE Autopilot cluster, Artifact Registry repository, builds, and service accounts (or set `BUILD_SA` and `NODE_SA` to existing pre-authorized service accounts).
+- Permissions to enable APIs, create networking, GKE, storage, registry, build, and service-account resources, update project/bucket/repository IAM, and act as the build/node service accounts. Alternatively, have an administrator prepare existing accounts and set `BUILD_SA` and `NODE_SA` before sourcing the environment.
 
 Run commands from this sample directory. GPU pods remain billable until the workload or cluster is deleted.
 
@@ -15,26 +15,30 @@ Run commands from this sample directory. GPU pods remain billable until the work
 ```bash
 export PROJECT_ID="YOUR_PROJECT_ID"
 export REGION=us-central1
+export STORAGE_ZONE_1=us-central1-b
+export STORAGE_ZONE_2=us-central1-c
 gcloud config set project "$PROJECT_ID"
 source scripts/env.sh
 bash scripts/prepare.sh
 ```
 
-This enables missing APIs, creates an Artifact Registry repository, and creates dedicated build/node service accounts (`${NAME}-build` and `${NAME}-node`) if they do not already exist. Resource names default to `rfd4-proteina`; override `NAME` before sourcing `scripts/env.sh` if needed.
+Choose two A100-capable zones in your region for disk replication. The pod must run in one of these zones.
+
+This enables missing APIs, prepares the shared default Cloud Build source bucket and a dedicated Artifact Registry repository, and creates build/node service accounts (`${NAME}-build` and `${NAME}-node`) with scoped permissions. Resource names default to `rfd4-proteina`; override `NAME` before sourcing `scripts/env.sh` if needed. Use a dedicated name because the scripts reuse resources with that name.
 
 ## 2. Clone and build
 
 ```bash
-git clone https://github.com/RosettaCommons/RFD4-Proteina.git upstream
+git clone --filter=blob:none https://github.com/RosettaCommons/RFD4-Proteina.git upstream
 git -C upstream fetch origin "$RFD4_COMMIT"
 git -C upstream checkout --detach "$RFD4_COMMIT"
 bash scripts/build.sh
 gcloud beta builds log "$(cat .build/build-id)" --stream --project="$PROJECT_ID"
 ```
 
-Confirm the build finishes with `SUCCESS`. Cloud Build uploads the `upstream` directory to the project's default Cloud Build staging bucket and builds the root Dockerfile's `api` target (CUDA 13.2 runtime and FastAPI server). Both image definitions and API code are available from source; no maintainer-built image is required. Builds take several minutes.
+Confirm the build finishes with `SUCCESS`. Cloud Build builds the public repository's Dockerfile, then adds this sample's FastAPI server using `Dockerfile.api`. It stages a clean archive of the pinned upstream commit and the sample API files. The image uses the upstream default CUDA 13 profile.
 
-The pinned upstream commit contains the portable API and Kubernetes assets proposed in [RosettaCommons/RFD4-Proteina PR #16](https://github.com/RosettaCommons/RFD4-Proteina/pull/16). The pin is usable before merge; update it to a reviewed main-branch commit after merge. This recipe keeps only Google Cloud provisioning, Cloud Build configuration, and a GKE Autopilot Kustomize overlay (`overlay/kustomization.yaml`); see `upstream/deploy/README.md` for Docker, other clouds, and on-premises Kubernetes.
+The recipe pins public commit `59e5abb1baa46bb10901812b875b738a15aa2d77`. The public repository provides the model and CLI image; `api/`, `Dockerfile.api`, and `kubernetes/` in this sample provide HTTP serving and deployment. Model weights come from [nvidia/RFD4-Proteina on Hugging Face](https://huggingface.co/nvidia/RFD4-Proteina), using the model revision selected in upstream `configs/inference.yaml`.
 
 ## 3. Create GKE Autopilot cluster and deploy
 
@@ -44,7 +48,9 @@ bash scripts/deploy.sh
 kubectl logs -n "$NAME" deployment/api --tail=30
 ```
 
-This creates a dedicated VPC/subnet and a regional GKE Autopilot cluster. When the Deployment is applied, GKE Autopilot automatically provisions an A100 node with the latest available GPU driver (`cloud.google.com/gke-gpu-driver-version: latest`). The deployment script renders the upstream Kubernetes base with `overlay/kustomization.yaml` for A100 node selection, CUDA library paths, Autopilot-compliant Guaranteed QoS resources, `standard-rwo-regional` SSD storage (100 GiB regional `pd-balanced` PersistentVolumeClaim), namespace, and image digest. Startup downloads the roughly 8 GB checkpoint pair from upstream public HTTPS, caches it on disk, and loads the model. The Service is internal.
+This creates a dedicated VPC/subnet and a regional GKE Autopilot cluster. GKE provisions an A100 node with its latest available driver. The overlay selects the GPU, sets resource requests, and creates a `standard-rwo-regional` StorageClass for a 100 GiB regional `pd-balanced` disk. The image is deployed by immutable digest.
+
+On first startup, the server downloads the pinned Hugging Face model bundle to `/workspace/cache/huggingface` on the persistent disk. Later startups reuse the cache. The Service is internal.
 
 ## 4. Call the API
 
@@ -59,7 +65,7 @@ In another terminal, from this sample directory:
 ```bash
 curl -fsS http://localhost:8000/health/ready
 curl -fsS -X POST http://localhost:8000/v1/designs \
-  -F file=@upstream/data/benchmarks/monomer/monomer-short.cif \
+  -F file=@api/examples/monomer-short.cif \
   -F num_replicates=1 -F seed=42
 ```
 
@@ -78,24 +84,26 @@ export DOWNLOAD_PATH="PATH_RETURNED_BY_RESULTS"
 curl -fsS "http://localhost:8000$DOWNLOAD_PATH" -o design.cif
 ```
 
+The included input in `api/examples/` is a decompressed copy of the pinned upstream short-monomer example.
+
 Interactive API documentation is at `http://localhost:8000/docs`. Or run the automated test to generate two designs, download CIFs, reject invalid input, and verify checkpoints loaded once:
 
 ```bash
-RFD4_SOURCE="$PWD/upstream" python3 upstream/deploy/api/smoke_test.py
+python3 api/smoke_test.py
 ```
 
 To check persistence, restart the pod, then stop/restart port forwarding and retrieve a previous request's status and results:
 
 ```bash
 kubectl rollout restart deployment/api -n "$NAME"
-kubectl rollout status deployment/api -n "$NAME" --timeout=300s
+kubectl rollout status deployment/api -n "$NAME" --timeout=1800s
 ```
 
 ## Limits and troubleshooting
 
 One replica, one Uvicorn process, eight waiting requests, one to four replicates per request, uploads up to 4 MiB, and up to 512 transformed tokens. A restart preserves completed results and marks interrupted requests failed for resubmission. Checkpoints reload from disk after a pod restart. Delete old results periodically to stay within the 100 GiB volume. Public access requires authenticated HTTPS; this sample exposes no public endpoint.
 
-The `standard-rwo-regional` disk is replicated across two zones in the region, allowing the Pod to reschedule into an alternate zone on restart if its original zone lacks GPU capacity. The running API reserves its GPU even when no requests are queued.
+The regional disk is replicated across two zones. Rescheduling requires GPU capacity in one of those two zones; it does not guarantee capacity throughout the region. The running API reserves its GPU even when no requests are queued.
 
 Generation uses the upstream medium preset without refolding or reward-guided search. The startup probe allows 30 minutes. Inspect logs/events if readiness fails:
 
@@ -107,10 +115,12 @@ kubectl logs -n "$NAME" deployment/api --tail=100
 
 ## 5. Cleanup
 
-Remove only this sample's named resources, including its results disk, cluster, image repository, and network, when finished:
+Remove this sample's workload, results disk, cluster, image repository, and network when finished:
 
 ```bash
 bash scripts/cleanup.sh
 ```
 
-See [PLAN.md](PLAN.md) for design references and [VALIDATION.md](VALIDATION.md) for the actual end-to-end result.
+Cleanup stops if disk reclamation times out; investigate the PVC/PV before retrying. The shared Cloud Build staging bucket and its source archives, service accounts, and IAM grants are retained. An administrator can remove sample-only accounts/grants and obsolete source archives when no longer needed. Do not delete a staging bucket used by other builds.
+
+See [PLAN.md](PLAN.md) for design references and [VALIDATION.md](VALIDATION.md) for current validation coverage.

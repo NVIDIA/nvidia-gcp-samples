@@ -9,7 +9,7 @@ if gcloud container clusters describe "$NAME" --region="$REGION" --project="$PRO
     pv_name=$(kubectl get pvc data -n "$NAME" --ignore-not-found -o jsonpath='{.spec.volumeName}')
     kubectl delete namespace "$NAME" --ignore-not-found --wait=true --timeout=300s
     if [[ -n "$pv_name" ]]; then
-        kubectl wait --for=delete "pv/$pv_name" --timeout=300s || true
+        kubectl wait --for=delete "pv/$pv_name" --timeout=300s
     fi
     gcloud container clusters delete "$NAME" --region="$REGION" --project="$PROJECT_ID" --quiet
 fi
