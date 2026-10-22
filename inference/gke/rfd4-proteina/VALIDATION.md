@@ -2,7 +2,7 @@
 
 ## Current public-source integration
 
-Pinned source: `89cc8ef7c932f14cce4d141f44b598b2d322a7ec` from the public RosettaCommons/RFD4-Proteina repository. [Upstream PR #52](https://github.com/RosettaCommons/RFD4-Proteina/pull/52) adds the API Docker target, serving code, and portable Kubernetes manifests to the public release. The sample builds that target and overlays those manifests. The runner delegates Hugging Face loading and per-request configuration to upstream inference helpers.
+Pinned source: `da2a917222ee332c321129323de040b276e6484a` from the public RosettaCommons/RFD4-Proteina repository. [Upstream PR #52](https://github.com/RosettaCommons/RFD4-Proteina/pull/52) adds the API Docker target, serving code, and portable Kubernetes manifests to the public release. The sample builds that target and overlays those manifests. The runner delegates Hugging Face loading and per-request configuration to upstream inference helpers.
 
 Local checks passed on 2026-10-21:
 

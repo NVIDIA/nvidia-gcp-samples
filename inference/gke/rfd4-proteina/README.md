@@ -39,7 +39,7 @@ gcloud beta builds log "$(cat .build/build-id)" --stream --project="$PROJECT_ID"
 
 Confirm the build finishes with `SUCCESS`. Cloud Build builds the upstream root Dockerfile's `api` target from a clean archive of the pinned commit. The image uses the upstream default CUDA 13 profile.
 
-The recipe pins `89cc8ef7c932f14cce4d141f44b598b2d322a7ec` from [RosettaCommons/RFD4-Proteina PR #52](https://github.com/RosettaCommons/RFD4-Proteina/pull/52), which adds the portable FastAPI server, API image target, and Kubernetes base to the public release. This commit can be built before merge; update the pin to a reviewed main-branch commit after merge. Model weights come from [nvidia/RFD4-Proteina on Hugging Face](https://huggingface.co/nvidia/RFD4-Proteina), using the revision selected in upstream `configs/inference.yaml`.
+The recipe pins `da2a917222ee332c321129323de040b276e6484a` from [RosettaCommons/RFD4-Proteina PR #52](https://github.com/RosettaCommons/RFD4-Proteina/pull/52), which adds the portable FastAPI server, API image target, and Kubernetes base to the public release. This commit can be built before merge; update the pin to a reviewed main-branch commit after merge. Model weights come from [nvidia/RFD4-Proteina on Hugging Face](https://huggingface.co/nvidia/RFD4-Proteina), using the revision selected in upstream `configs/inference.yaml`.
 
 This sample contains Google Cloud provisioning, Cloud Build configuration, and the Autopilot overlay. See `upstream/deploy/README.md` for the portable Docker/Kubernetes guide.
 
@@ -51,7 +51,7 @@ bash scripts/deploy.sh
 kubectl logs -n "$NAME" deployment/api --tail=30
 ```
 
-This creates a dedicated VPC/subnet and a regional GKE Autopilot cluster. GKE provisions an A100 node with its latest available driver. The overlay selects the GPU, sets resource requests, and creates a `standard-rwo-regional` StorageClass for a 100 GiB regional `pd-balanced` disk. The image is deployed by immutable digest.
+This creates a dedicated VPC/subnet and a regional GKE Autopilot cluster. GKE provisions an A100 node with its latest available driver. The overlay selects the GPU, sets resource requests, and creates a `rfd4-regional-rwo` StorageClass for a 100 GiB regional `pd-balanced` disk. The image is deployed by immutable digest.
 
 On first startup, the server downloads the pinned Hugging Face model bundle to `/workspace/cache/huggingface` on the persistent disk. Later startups reuse the cache. The Service is internal.
 

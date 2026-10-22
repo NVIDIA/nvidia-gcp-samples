@@ -1,7 +1,7 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: standard-rwo-regional
+  name: rfd4-regional-rwo
 provisioner: pd.csi.storage.gke.io
 parameters:
   type: pd-balanced

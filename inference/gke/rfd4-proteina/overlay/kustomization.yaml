@@ -10,7 +10,7 @@ patches:
       metadata:
         name: data
       spec:
-        storageClassName: standard-rwo-regional
+        storageClassName: rfd4-regional-rwo
   - patch: |-
       apiVersion: apps/v1
       kind: Deployment
