@@ -38,6 +38,7 @@ Samples are organized first by use case, then by Google Cloud service, then by N
  - GKE / Dynamo: [Dynamo G4 Kimi K2.5 reference deployments](inference/gke/dynamo/g4-kimi-k25)
  - GKE / NIM: [LLM NIM on Google Kubernetes Engine](inference/gke/nim/llm-nim)
  - GKE / NIM: [LLM NIM on Google Kubernetes Engine with gcloud](inference/gke/nim/llm-nim/gcloud)
+ - GKE / RFD4-Proteína: [Persistent protein-design API on Google Kubernetes Engine](inference/gke/rfd4-proteina)
  - GKE / TAO and Triton: [Building a computer vision service using NVIDIA NGC and Triton in Google Cloud](inference/gke/tao-triton/build-cv-service)
  - GKE / Triton: [Triton autoscaling example with TensorRT optimization in Google Kubernetes Engine](inference/gke/triton/triton-gke)
  - Agent Platform / NIM: [LLM NIM Python notebooks on Agent Platform](inference/agent-platform/nim/llm-nim/python)
