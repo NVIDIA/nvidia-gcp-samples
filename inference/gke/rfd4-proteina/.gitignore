@@ -1,0 +1,7 @@
+.build/
+.validation/
+upstream/
+__pycache__/
+*.pyc
+.venv/
+results/
