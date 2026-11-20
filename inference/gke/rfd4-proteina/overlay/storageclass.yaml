@@ -1,0 +1,17 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: rfd4-regional-rwo
+provisioner: pd.csi.storage.gke.io
+parameters:
+  type: pd-balanced
+  replication-type: regional-pd
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+allowedTopologies:
+  - matchLabelExpressions:
+      - key: topology.gke.io/zone
+        values:
+          - RFD4_STORAGE_ZONE_1
+          - RFD4_STORAGE_ZONE_2

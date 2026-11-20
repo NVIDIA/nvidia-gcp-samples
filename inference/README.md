@@ -11,6 +11,7 @@ Samples in this use case are organized by Google Cloud service, then by NVIDIA l
 - [Cloud Run / NIM](cloud-run/nim)
 - [GKE / Dynamo](gke/dynamo)
 - [GKE / NIM](gke/nim)
+- [GKE / RFD4-Proteína API](gke/rfd4-proteina)
 - [GKE / TAO and Triton](gke/tao-triton)
 - [GKE / Triton](gke/triton)
 - [GKE / vLLM Inference Gateway](gke/vllm-inference-gateway)
